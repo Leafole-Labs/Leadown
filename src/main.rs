@@ -27,6 +27,12 @@ use vault::NodeKind;
 // ── Palette: pure monochrome, driven by `Palette` global ──────────────────
 const SANS: &str = "Noto Sans";
 
+const MOD: &str = if cfg!(target_os = "macos") {
+    "Cmd"
+} else {
+    "Ctrl"
+};
+
 const SIDEBAR_W: f32 = 248.;
 const SAVE_DEBOUNCE: Duration = Duration::from_millis(400);
 
@@ -1700,7 +1706,7 @@ impl AbstractApp {
                                     div()
                                         .id("space-switcher")
                                         .role(Role::Button)
-                                        .aria_label("Trocar de espaço (Ctrl+O)")
+                                        .aria_label(format!("Trocar de espaço ({MOD}+O)").as_str())
                                         .flex_1()
                                         .min_w_0()
                                         .h(px(30.))
@@ -1766,7 +1772,7 @@ impl AbstractApp {
                                 icon_btn(
                                     "new",
                                     "icons/add.svg",
-                                    "Nova nota (Ctrl+N)".into(),
+                                    format!("Nova nota ({MOD}+N)").into(),
                                     false,
                                 )
                                 .on_click(
@@ -1944,7 +1950,7 @@ impl AbstractApp {
             SaveState::Saved => format!("{} palavras", self.words).into(),
         });
         let theme_tip =
-            SharedString::from(format!("Tema: {} (Ctrl+Shift+L)", self.theme_pref.label()));
+            SharedString::from(format!("Tema: {} ({MOD}+Shift+L)", self.theme_pref.label()));
 
         let toolbar = titlebar_drag(div().id("toolbar"))
             .h(px(48.))
@@ -1959,7 +1965,7 @@ impl AbstractApp {
                     icon_btn(
                         "toggle-sidebar",
                         "icons/sidebar.svg",
-                        "Barra lateral (Ctrl+\\)".into(),
+                        format!("Barra lateral ({MOD}+\\)").into(),
                         !self.sidebar_open,
                     )
                     .on_click(cx.listener(|this, _, _, cx| this.toggle_sidebar(cx))),
@@ -2014,7 +2020,7 @@ impl AbstractApp {
                     icon_btn(
                         "delete",
                         "icons/delete.svg",
-                        "Apagar nota (Ctrl+Shift+Backspace)".into(),
+                        format!("Apagar nota ({MOD}+Shift+Backspace)").into(),
                         false,
                     )
                     .on_click(cx.listener(|this, _, window, cx| this.delete_note(window, cx))),
@@ -2194,6 +2200,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-n", NewNote, c),
         KeyBinding::new("cmd-n", NewNote, c),
         KeyBinding::new("ctrl-shift-n", NewFolder, c),
+        KeyBinding::new("cmd-shift-n", NewFolder, c),
         KeyBinding::new("ctrl-o", OpenSpace, c),
         KeyBinding::new("cmd-o", OpenSpace, c),
         KeyBinding::new("ctrl-s", SaveNow, c),
@@ -2203,6 +2210,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-\\", ToggleSidebar, c),
         KeyBinding::new("cmd-\\", ToggleSidebar, c),
         KeyBinding::new("ctrl-shift-backspace", DeleteNote, c),
+        KeyBinding::new("cmd-shift-backspace", DeleteNote, c),
         KeyBinding::new("f2", RenameNote, c),
         KeyBinding::new("f1", StartTour, c),
         KeyBinding::new("cmd-q", Quit, c),

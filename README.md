@@ -1,5 +1,7 @@
 # ◇ abstract
 
+[![ci](https://github.com/horizzon3507/abstract-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/horizzon3507/abstract-editor/actions/workflows/ci.yml)
+
 **abstract** — a minimal markdown notes editor, GPU-rendered with [GPUI](https://gpui.rs).
 
 Local-first: your notes are plain `.md` files living in real folders on disk. No accounts, no sync daemon, no proprietary format — the folder is the app.
@@ -20,9 +22,11 @@ Local-first: your notes are plain `.md` files living in real folders on disk. No
 
 Standard editing keys, `Ctrl` + arrows for word jumps, `Ctrl+B` bold, `Ctrl+I` italic, `Ctrl+Z`/`Ctrl+Shift+Z` undo/redo. Tour: `Enter`/`→` next, `←` back, `Esc` skip.
 
+Shortcuts are `Ctrl` on Linux and `Cmd` on macOS: `Ctrl/Cmd+N` new note, `Ctrl/Cmd+Shift+N` new folder, `Ctrl/Cmd+O` switch space, `Ctrl/Cmd+S` save now, `Ctrl/Cmd+Shift+L` cycle theme, `Ctrl/Cmd+\` toggle sidebar, `Ctrl/Cmd+Shift+Backspace` delete note, `F2` rename, `F1` tour, `Cmd+Q` quit (macOS).
+
 ## Install
 
-Requires Rust (pinned toolchain via `rust-toolchain.toml`) and a Linux desktop — Wayland or X11.
+Requires Rust (pinned toolchain via `rust-toolchain.toml`). Supported platforms: Linux (Wayland or X11) and macOS.
 
 ```bash
 cargo run --release
@@ -34,6 +38,16 @@ Or install the binary:
 cargo install --path .
 abstract-editor
 ```
+
+### macOS
+
+Install the Xcode Command Line Tools — no other system dependencies:
+
+```bash
+xcode-select --install
+```
+
+### Linux
 
 System dependencies (Debian/Ubuntu):
 
