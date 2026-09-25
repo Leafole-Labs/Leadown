@@ -21,10 +21,37 @@ const PLACEHOLDER: &str = "Comece a escrever…";
 actions!(
     live_editor,
     [
-        Backspace, Delete, DeleteWordLeft, Left, Right, Up, Down, SelectLeft, SelectRight,
-        SelectUp, SelectDown, WordLeft, WordRight, SelectWordLeft, SelectWordRight, Home, End,
-        SelectHome, SelectEnd, DocStart, DocEnd, SelectAll, Copy, Cut, Paste, Enter, Tab, Undo,
-        Redo, Bold, Italic,
+        Backspace,
+        Delete,
+        DeleteWordLeft,
+        Left,
+        Right,
+        Up,
+        Down,
+        SelectLeft,
+        SelectRight,
+        SelectUp,
+        SelectDown,
+        WordLeft,
+        WordRight,
+        SelectWordLeft,
+        SelectWordRight,
+        Home,
+        End,
+        SelectHome,
+        SelectEnd,
+        DocStart,
+        DocEnd,
+        SelectAll,
+        Copy,
+        Cut,
+        Paste,
+        Enter,
+        Tab,
+        Undo,
+        Redo,
+        Bold,
+        Italic,
     ]
 );
 
@@ -171,17 +198,32 @@ impl LiveEditor {
     }
 
     fn cursor(&self) -> usize {
-        if self.reversed { self.sel.start } else { self.sel.end }
+        if self.reversed {
+            self.sel.start
+        } else {
+            self.sel.end
+        }
     }
 
     // ── Editing ──────────────────────────────────────────────────────────
 
-    fn edit(&mut self, range: Range<usize>, new: &str, select: Option<Range<usize>>, cx: &mut Context<Self>) {
+    fn edit(
+        &mut self,
+        range: Range<usize>,
+        new: &str,
+        select: Option<Range<usize>>,
+        cx: &mut Context<Self>,
+    ) {
         let typing = range.is_empty() && new.chars().count() == 1 && new != "\n";
         let coalesce = typing
-            && self.last_typed.is_some_and(|t| t.elapsed() < Duration::from_millis(800));
+            && self
+                .last_typed
+                .is_some_and(|t| t.elapsed() < Duration::from_millis(800));
         if !coalesce {
-            self.undo.push(Snapshot { text: self.text.clone(), sel: self.sel.clone() });
+            self.undo.push(Snapshot {
+                text: self.text.clone(),
+                sel: self.sel.clone(),
+            });
             if self.undo.len() > 300 {
                 self.undo.remove(0);
             }
@@ -209,9 +251,16 @@ impl LiveEditor {
     }
 
     fn restore(&mut self, from_undo: bool, cx: &mut Context<Self>) {
-        let (src, dst) = if from_undo { (&mut self.undo, &mut self.redo) } else { (&mut self.redo, &mut self.undo) };
+        let (src, dst) = if from_undo {
+            (&mut self.undo, &mut self.redo)
+        } else {
+            (&mut self.redo, &mut self.undo)
+        };
         let Some(snap) = src.pop() else { return };
-        dst.push(Snapshot { text: std::mem::replace(&mut self.text, snap.text), sel: self.sel.clone() });
+        dst.push(Snapshot {
+            text: std::mem::replace(&mut self.text, snap.text),
+            sel: self.sel.clone(),
+        });
         self.sel = snap.sel.start.min(self.text.len())..snap.sel.end.min(self.text.len());
         self.reversed = false;
         self.marked = None;
@@ -256,11 +305,17 @@ impl LiveEditor {
     }
 
     fn prev_boundary(&self, off: usize) -> usize {
-        self.text[..off].grapheme_indices(true).next_back().map_or(0, |(i, _)| i)
+        self.text[..off]
+            .grapheme_indices(true)
+            .next_back()
+            .map_or(0, |(i, _)| i)
     }
 
     fn next_boundary(&self, off: usize) -> usize {
-        self.text[off..].graphemes(true).next().map_or(self.text.len(), |g| off + g.len())
+        self.text[off..]
+            .graphemes(true)
+            .next()
+            .map_or(self.text.len(), |g| off + g.len())
     }
 
     fn word_left(&self, off: usize) -> usize {
@@ -284,7 +339,9 @@ impl LiveEditor {
         let Some(layout) = &self.layout else {
             return if down { self.text.len() } else { 0 };
         };
-        let Some((p, lh)) = layout.position(c) else { return c };
+        let Some((p, lh)) = layout.position(c) else {
+            return c;
+        };
         let x = *self.goal_x.get_or_insert(p.x);
         let y = if down { p.y + lh + 1. } else { p.y - 1. };
         if y < 0. {
@@ -300,7 +357,11 @@ impl LiveEditor {
         let goal = self.goal_x;
         let target = self.vertical_target(down);
         let keep = self.goal_x.or(goal);
-        if select { self.select_to(target, cx) } else { self.move_to(target, cx) }
+        if select {
+            self.select_to(target, cx)
+        } else {
+            self.move_to(target, cx)
+        }
         self.goal_x = keep;
     }
 
@@ -310,17 +371,28 @@ impl LiveEditor {
         let l = self.layout.as_ref()?;
         let x = f32::from(pos.x - l.bounds.left());
         let y = f32::from(pos.y - l.bounds.top()) + l.scroll;
-        Some(if y < 0. { 0 } else if y > l.content_h { self.text.len() } else { l.hit(x, y) })
+        Some(if y < 0. {
+            0
+        } else if y > l.content_h {
+            self.text.len()
+        } else {
+            l.hit(x, y)
+        })
     }
 
     fn mouse_down(&mut self, ev: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         window.focus(&self.focus, cx);
-        let Some(off) = self.offset_at(ev.position) else { return };
+        let Some(off) = self.offset_at(ev.position) else {
+            return;
+        };
         self.selecting = true;
         if ev.modifiers.shift {
             self.select_to(off, cx);
         } else if ev.click_count == 2 {
-            let (a, b) = (self.word_left(self.next_boundary(off).min(self.text.len())), self.word_right(off));
+            let (a, b) = (
+                self.word_left(self.next_boundary(off).min(self.text.len())),
+                self.word_right(off),
+            );
             self.sel = a.min(off)..b.max(off);
             self.after_move(cx);
         } else if ev.click_count >= 3 {
@@ -332,7 +404,8 @@ impl LiveEditor {
     }
 
     fn mouse_move(&mut self, ev: &MouseMoveEvent, _: &mut Window, cx: &mut Context<Self>) {
-        if self.selecting && ev.pressed_button == Some(MouseButton::Left)
+        if self.selecting
+            && ev.pressed_button == Some(MouseButton::Left)
             && let Some(off) = self.offset_at(ev.position)
         {
             self.select_to(off, cx);
@@ -351,7 +424,7 @@ impl LiveEditor {
         self.text[..off.min(self.text.len())].encode_utf16().count()
     }
 
-    fn from_utf16(&self, off16: usize) -> usize {
+    fn offset_from_utf16(&self, off16: usize) -> usize {
         let mut n = 0;
         for (i, ch) in self.text.char_indices() {
             if n >= off16 {
@@ -363,7 +436,7 @@ impl LiveEditor {
     }
 
     fn range_from_utf16(&self, r: &Range<usize>) -> Range<usize> {
-        self.from_utf16(r.start)..self.from_utf16(r.end)
+        self.offset_from_utf16(r.start)..self.offset_from_utf16(r.end)
     }
 }
 
@@ -380,7 +453,12 @@ impl EntityInputHandler for LiveEditor {
         Some(self.text[r].to_string())
     }
 
-    fn selected_text_range(&mut self, _: bool, _: &mut Window, _: &mut Context<Self>) -> Option<UTF16Selection> {
+    fn selected_text_range(
+        &mut self,
+        _: bool,
+        _: &mut Window,
+        _: &mut Context<Self>,
+    ) -> Option<UTF16Selection> {
         Some(UTF16Selection {
             range: self.to_utf16(self.sel.start)..self.to_utf16(self.sel.end),
             reversed: self.reversed,
@@ -388,14 +466,22 @@ impl EntityInputHandler for LiveEditor {
     }
 
     fn marked_text_range(&self, _: &mut Window, _: &mut Context<Self>) -> Option<Range<usize>> {
-        self.marked.as_ref().map(|r| self.to_utf16(r.start)..self.to_utf16(r.end))
+        self.marked
+            .as_ref()
+            .map(|r| self.to_utf16(r.start)..self.to_utf16(r.end))
     }
 
     fn unmark_text(&mut self, _: &mut Window, _: &mut Context<Self>) {
         self.marked = None;
     }
 
-    fn replace_text_in_range(&mut self, range: Option<Range<usize>>, new: &str, _: &mut Window, cx: &mut Context<Self>) {
+    fn replace_text_in_range(
+        &mut self,
+        range: Option<Range<usize>>,
+        new: &str,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let r = range
             .map(|r| self.range_from_utf16(&r))
             .or(self.marked.clone())
@@ -441,16 +527,24 @@ impl EntityInputHandler for LiveEditor {
         _: &mut Window,
         _: &mut Context<Self>,
     ) -> Option<Bounds<Pixels>> {
-        let off = self.from_utf16(range.start);
+        let off = self.offset_from_utf16(range.start);
         let l = self.layout.as_ref()?;
         let (p, lh) = l.position(off)?;
         Some(Bounds::new(
-            point(l.bounds.left() + px(p.x), l.bounds.top() + px(p.y - l.scroll)),
+            point(
+                l.bounds.left() + px(p.x),
+                l.bounds.top() + px(p.y - l.scroll),
+            ),
             size(px(2.), px(lh)),
         ))
     }
 
-    fn character_index_for_point(&mut self, p: Point<Pixels>, _: &mut Window, _: &mut Context<Self>) -> Option<usize> {
+    fn character_index_for_point(
+        &mut self,
+        p: Point<Pixels>,
+        _: &mut Window,
+        _: &mut Context<Self>,
+    ) -> Option<usize> {
         self.offset_at(p).map(|o| self.to_utf16(o))
     }
 }
@@ -485,31 +579,63 @@ impl Render for LiveEditor {
             }))
             .on_action(cx.listener(|this, _: &DeleteWordLeft, _, cx| {
                 let c = this.cursor();
-                let from = if this.sel.is_empty() { this.word_left(c) } else { this.sel.start };
+                let from = if this.sel.is_empty() {
+                    this.word_left(c)
+                } else {
+                    this.sel.start
+                };
                 this.edit(from..this.sel.end.max(c), "", None, cx);
             }))
             .on_action(cx.listener(|this, _: &Left, _, cx| {
-                let t = if this.sel.is_empty() { this.prev_boundary(this.cursor()) } else { this.sel.start };
+                let t = if this.sel.is_empty() {
+                    this.prev_boundary(this.cursor())
+                } else {
+                    this.sel.start
+                };
                 this.move_to(t, cx);
             }))
             .on_action(cx.listener(|this, _: &Right, _, cx| {
-                let t = if this.sel.is_empty() { this.next_boundary(this.cursor()) } else { this.sel.end };
+                let t = if this.sel.is_empty() {
+                    this.next_boundary(this.cursor())
+                } else {
+                    this.sel.end
+                };
                 this.move_to(t, cx);
             }))
-            .on_action(cx.listener(|this, _: &SelectLeft, _, cx| this.select_to(this.prev_boundary(this.cursor()), cx)))
-            .on_action(cx.listener(|this, _: &SelectRight, _, cx| this.select_to(this.next_boundary(this.cursor()), cx)))
-            .on_action(cx.listener(|this, _: &WordLeft, _, cx| this.move_to(this.word_left(this.cursor()), cx)))
-            .on_action(cx.listener(|this, _: &WordRight, _, cx| this.move_to(this.word_right(this.cursor()), cx)))
-            .on_action(cx.listener(|this, _: &SelectWordLeft, _, cx| this.select_to(this.word_left(this.cursor()), cx)))
-            .on_action(cx.listener(|this, _: &SelectWordRight, _, cx| this.select_to(this.word_right(this.cursor()), cx)))
+            .on_action(cx.listener(|this, _: &SelectLeft, _, cx| {
+                this.select_to(this.prev_boundary(this.cursor()), cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectRight, _, cx| {
+                this.select_to(this.next_boundary(this.cursor()), cx)
+            }))
+            .on_action(cx.listener(|this, _: &WordLeft, _, cx| {
+                this.move_to(this.word_left(this.cursor()), cx)
+            }))
+            .on_action(cx.listener(|this, _: &WordRight, _, cx| {
+                this.move_to(this.word_right(this.cursor()), cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectWordLeft, _, cx| {
+                this.select_to(this.word_left(this.cursor()), cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectWordRight, _, cx| {
+                this.select_to(this.word_right(this.cursor()), cx)
+            }))
             .on_action(cx.listener(|this, _: &Up, _, cx| this.vertical(false, false, cx)))
             .on_action(cx.listener(|this, _: &Down, _, cx| this.vertical(true, false, cx)))
             .on_action(cx.listener(|this, _: &SelectUp, _, cx| this.vertical(false, true, cx)))
             .on_action(cx.listener(|this, _: &SelectDown, _, cx| this.vertical(true, true, cx)))
-            .on_action(cx.listener(|this, _: &Home, _, cx| this.move_to(this.line_range(this.cursor()).start, cx)))
-            .on_action(cx.listener(|this, _: &End, _, cx| this.move_to(this.line_range(this.cursor()).end, cx)))
-            .on_action(cx.listener(|this, _: &SelectHome, _, cx| this.select_to(this.line_range(this.cursor()).start, cx)))
-            .on_action(cx.listener(|this, _: &SelectEnd, _, cx| this.select_to(this.line_range(this.cursor()).end, cx)))
+            .on_action(cx.listener(|this, _: &Home, _, cx| {
+                this.move_to(this.line_range(this.cursor()).start, cx)
+            }))
+            .on_action(cx.listener(|this, _: &End, _, cx| {
+                this.move_to(this.line_range(this.cursor()).end, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectHome, _, cx| {
+                this.select_to(this.line_range(this.cursor()).start, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SelectEnd, _, cx| {
+                this.select_to(this.line_range(this.cursor()).end, cx)
+            }))
             .on_action(cx.listener(|this, _: &DocStart, _, cx| this.move_to(0, cx)))
             .on_action(cx.listener(|this, _: &DocEnd, _, cx| this.move_to(this.text.len(), cx)))
             .on_action(cx.listener(|this, _: &SelectAll, _, cx| {
@@ -519,12 +645,16 @@ impl Render for LiveEditor {
             }))
             .on_action(cx.listener(|this, _: &Copy, _, cx| {
                 if !this.sel.is_empty() {
-                    cx.write_to_clipboard(ClipboardItem::new_string(this.text[this.sel.clone()].to_string()));
+                    cx.write_to_clipboard(ClipboardItem::new_string(
+                        this.text[this.sel.clone()].to_string(),
+                    ));
                 }
             }))
             .on_action(cx.listener(|this, _: &Cut, _, cx| {
                 if !this.sel.is_empty() {
-                    cx.write_to_clipboard(ClipboardItem::new_string(this.text[this.sel.clone()].to_string()));
+                    cx.write_to_clipboard(ClipboardItem::new_string(
+                        this.text[this.sel.clone()].to_string(),
+                    ));
                     this.insert("", cx);
                 }
             }))
@@ -551,8 +681,14 @@ impl Render for LiveEditor {
             .on_action(cx.listener(|this, _: &Italic, _, cx| this.wrap("*", cx)))
             .on_mouse_down(MouseButton::Left, cx.listener(Self::mouse_down))
             .on_mouse_move(cx.listener(Self::mouse_move))
-            .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, _| this.selecting = false))
-            .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, _| this.selecting = false))
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|this, _, _, _| this.selecting = false),
+            )
+            .on_mouse_up_out(
+                MouseButton::Left,
+                cx.listener(|this, _, _, _| this.selecting = false),
+            )
             .on_scroll_wheel(cx.listener(Self::scroll))
             .child(EditorElement(cx.entity()))
     }
@@ -615,7 +751,10 @@ pub struct Layout {
 
 impl Layout {
     fn line_for(&self, off: usize) -> Option<&LineBox> {
-        let ix = self.lines.partition_point(|l| l.buf.start <= off).checked_sub(1)?;
+        let ix = self
+            .lines
+            .partition_point(|l| l.buf.start <= off)
+            .checked_sub(1)?;
         self.lines.get(ix)
     }
 
@@ -623,15 +762,32 @@ impl Layout {
     fn position(&self, off: usize) -> Option<(Point<f32>, f32)> {
         let line = self.line_for(off)?;
         let di = line.to_display(off).min(line.wrapped.len());
-        let p = line.wrapped.position_for_index(di, px(line.lh)).unwrap_or_default();
-        Some((point(line.x + f32::from(p.x), line.top + f32::from(p.y)), line.lh))
+        let p = line
+            .wrapped
+            .position_for_index(di, px(line.lh))
+            .unwrap_or_default();
+        Some((
+            point(line.x + f32::from(p.x), line.top + f32::from(p.y)),
+            line.lh,
+        ))
     }
 
     fn hit(&self, x: f32, y: f32) -> usize {
-        let ix = self.lines.partition_point(|l| l.bottom() <= y).min(self.lines.len().saturating_sub(1));
-        let Some(line) = self.lines.get(ix) else { return 0 };
-        let local = point(px(x - line.x), px((y - line.top).clamp(0., (line.rows_h - 1.).max(0.))));
-        let di = line.wrapped.closest_index_for_position(local, px(line.lh)).unwrap_or_else(|i| i);
+        let ix = self
+            .lines
+            .partition_point(|l| l.bottom() <= y)
+            .min(self.lines.len().saturating_sub(1));
+        let Some(line) = self.lines.get(ix) else {
+            return 0;
+        };
+        let local = point(
+            px(x - line.x),
+            px((y - line.top).clamp(0., (line.rows_h - 1.).max(0.))),
+        );
+        let di = line
+            .wrapped
+            .closest_index_for_position(local, px(line.lh))
+            .unwrap_or_else(|i| i);
         line.to_buffer(di)
     }
 }
@@ -657,7 +813,11 @@ fn run(pal: &Palette, kind: Kind, flags: u16, len: usize) -> TextRun {
     let code = kind == Kind::Code || flags & md::CODE != 0;
     let mut f = font(if code { MONO } else { SANS });
     if heading {
-        f.weight = if matches!(kind, Kind::Heading(1 | 2)) { FontWeight::BOLD } else { FontWeight::SEMIBOLD };
+        f.weight = if matches!(kind, Kind::Heading(1 | 2)) {
+            FontWeight::BOLD
+        } else {
+            FontWeight::SEMIBOLD
+        };
     }
     if flags & md::BOLD != 0 {
         f.weight = FontWeight::BOLD;
@@ -676,15 +836,28 @@ fn run(pal: &Palette, kind: Kind, flags: u16, len: usize) -> TextRun {
     } else {
         pal.body
     };
-    let underline = (flags & (md::UNDERLINE | md::LINK) != 0 && flags & md::MARK == 0).then(|| UnderlineStyle {
-        thickness: px(1.),
-        color: (flags & md::LINK != 0).then(|| hsla(pal.muted)),
-        wavy: false,
+    let underline = (flags & (md::UNDERLINE | md::LINK) != 0 && flags & md::MARK == 0).then(|| {
+        UnderlineStyle {
+            thickness: px(1.),
+            color: (flags & md::LINK != 0).then(|| hsla(pal.muted)),
+            wavy: false,
+        }
     });
-    let strikethrough = (flags & md::STRIKE != 0 && flags & md::MARK == 0)
-        .then(|| StrikethroughStyle { thickness: px(1.), color: None });
-    let background_color = (flags & md::CODE != 0 && kind != Kind::Code).then(|| hsla(pal.inline_code_bg));
-    TextRun { len, font: f, color: hsla(color), background_color, underline, strikethrough }
+    let strikethrough =
+        (flags & md::STRIKE != 0 && flags & md::MARK == 0).then(|| StrikethroughStyle {
+            thickness: px(1.),
+            color: None,
+        });
+    let background_color =
+        (flags & md::CODE != 0 && kind != Kind::Code).then(|| hsla(pal.inline_code_bg));
+    TextRun {
+        len,
+        font: f,
+        color: hsla(color),
+        background_color,
+        underline,
+        strikethrough,
+    }
 }
 
 pub struct EditorElement(Entity<LiveEditor>);
@@ -737,7 +910,11 @@ impl Element for EditorElement {
         let col_w = (width - PAD_X * 2.).clamp(120., MAX_COL);
         let col_x = ((width - col_w) / 2.).max(0.);
         // Unfocused: everything renders; focused: the selection reveals syntax.
-        let reveal = if ed.focus.is_focused(window) { ed.sel.clone() } else { usize::MAX..usize::MAX };
+        let reveal = if ed.focus.is_focused(window) {
+            ed.sel.clone()
+        } else {
+            usize::MAX..usize::MAX
+        };
         let text = &ed.text;
         let a = &ed.analysis;
 
@@ -753,7 +930,7 @@ impl Element for EditorElement {
             let segs = if text.is_empty() && ix == 0 {
                 display.push_str(PLACEHOLDER);
                 runs.push(run(&pal, *kind, md::MARK, PLACEHOLDER.len()));
-                vec![0..0]
+                std::iter::once(0..0).collect()
             } else {
                 let segs = a.visible(buf.clone(), &reveal);
                 for s in &segs {
@@ -773,7 +950,13 @@ impl Element for EditorElement {
             };
             let wrapped = window
                 .text_system()
-                .shape_text(SharedString::from(display.clone()), px(fs), &runs, Some(px(col_w - indent)), None)
+                .shape_text(
+                    SharedString::from(display.clone()),
+                    px(fs),
+                    &runs,
+                    Some(px(col_w - indent)),
+                    None,
+                )
                 .ok()
                 .and_then(|mut v| v.pop())
                 .unwrap_or_default();
@@ -793,7 +976,14 @@ impl Element for EditorElement {
             });
         }
         let content_h = y + PAD_TOP;
-        let mut layout = Layout { bounds, scroll: ed.scroll_y, col_x, col_w, content_h, lines };
+        let mut layout = Layout {
+            bounds,
+            scroll: ed.scroll_y,
+            col_x,
+            col_w,
+            content_h,
+            lines,
+        };
 
         if ed.autoscroll
             && let Some((p, lh)) = layout.position(ed.cursor())
@@ -857,15 +1047,24 @@ impl Element for EditorElement {
                 }
                 match line.kind {
                     Kind::Code => window.paint_quad(fill(
-                        Bounds::new(at(layout.col_x - 14., line.top), size(px(layout.col_w + 28.), px(line.rows_h))),
+                        Bounds::new(
+                            at(layout.col_x - 14., line.top),
+                            size(px(layout.col_w + 28.), px(line.rows_h)),
+                        ),
                         hsla(pal.code_bg),
                     )),
                     Kind::Quote => window.paint_quad(fill(
-                        Bounds::new(at(layout.col_x + 2., line.top), size(px(2.), px(line.rows_h))),
+                        Bounds::new(
+                            at(layout.col_x + 2., line.top),
+                            size(px(2.), px(line.rows_h)),
+                        ),
                         hsla(pal.rule),
                     )),
                     Kind::Rule if line.wrapped.len() == 0 => window.paint_quad(fill(
-                        Bounds::new(at(layout.col_x, line.top + line.lh / 2.), size(px(layout.col_w), px(1.))),
+                        Bounds::new(
+                            at(layout.col_x, line.top + line.lh / 2.),
+                            size(px(layout.col_w), px(1.)),
+                        ),
                         hsla(pal.rule),
                     )),
                     _ => {}
@@ -878,10 +1077,15 @@ impl Element for EditorElement {
                 if s < e || spans_break {
                     let pos = |off: usize| {
                         let di = line.to_display(off).min(line.wrapped.len());
-                        line.wrapped.position_for_index(di, px(line.lh)).unwrap_or_default()
+                        line.wrapped
+                            .position_for_index(di, px(line.lh))
+                            .unwrap_or_default()
                     };
                     let (ps, pe) = (pos(s), pos(e));
-                    let (r0, r1) = ((f32::from(ps.y) / line.lh).round() as usize, (f32::from(pe.y) / line.lh).round() as usize);
+                    let (r0, r1) = (
+                        (f32::from(ps.y) / line.lh).round() as usize,
+                        (f32::from(pe.y) / line.lh).round() as usize,
+                    );
                     let full = layout.col_w - (line.x - layout.col_x);
                     for r in r0..=r1 {
                         let x0 = if r == r0 { f32::from(ps.x) } else { 0. };
@@ -890,7 +1094,10 @@ impl Element for EditorElement {
                             x1 += 6.;
                         }
                         window.paint_quad(fill(
-                            Bounds::new(at(line.x + x0, line.top + r as f32 * line.lh), size(px((x1 - x0).max(0.)), px(line.lh))),
+                            Bounds::new(
+                                at(line.x + x0, line.top + r as f32 * line.lh),
+                                size(px((x1 - x0).max(0.)), px(line.lh)),
+                            ),
                             rgba(pal.selection),
                         ));
                     }
@@ -899,15 +1106,20 @@ impl Element for EditorElement {
                 // `paint` draws glyphs/decorations only; backgrounds (inline
                 // code) are a separate pass underneath.
                 let origin = at(line.x, line.top);
-                line.wrapped.paint_background(origin, px(line.lh), TextAlign::Left, None, window, cx).ok();
-                line.wrapped.paint(origin, px(line.lh), TextAlign::Left, None, window, cx).ok();
+                line.wrapped
+                    .paint_background(origin, px(line.lh), TextAlign::Left, None, window, cx)
+                    .ok();
+                line.wrapped
+                    .paint(origin, px(line.lh), TextAlign::Left, None, window, cx)
+                    .ok();
             }
 
-            if focused
-                && let (Some(p), Some((_, lh))) = (next_caret, target)
-            {
+            if focused && let (Some(p), Some((_, lh))) = (next_caret, target) {
                 let h = (lh * 0.72).max(16.);
-                window.paint_quad(fill(Bounds::new(at(p.x, p.y + (lh - h) / 2.), size(px(2.), px(h))), hsla(pal.caret)));
+                window.paint_quad(fill(
+                    Bounds::new(at(p.x, p.y + (lh - h) / 2.), size(px(2.), px(h))),
+                    hsla(pal.caret),
+                ));
             }
         });
 

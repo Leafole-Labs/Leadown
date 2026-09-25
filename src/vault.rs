@@ -27,7 +27,7 @@ pub struct Node {
 }
 
 impl Node {
-    fn is_folder(&self) -> bool {
+    pub fn is_folder(&self) -> bool {
         self.kind == NodeKind::Folder
     }
 }
@@ -49,7 +49,12 @@ fn scan_dir(dir: &Path, depth: usize) -> io::Result<Vec<Node>> {
         }
         let Ok(ft) = entry.file_type() else { continue };
         let path = entry.path();
-        let modified = entry.metadata().and_then(|m| m.modified()).unwrap_or(SystemTime::UNIX_EPOCH);
+        // Follow links: a note's recency is its content's mtime, not the
+        // moment the symlink was created.
+        let modified = path
+            .metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
         // `file_type` does not follow links: a symlink reports itself, so
         // check the target only to refuse symlinked directories.
         if ft.is_dir() || (ft.is_symlink() && path.is_dir()) {
@@ -61,13 +66,25 @@ fn scan_dir(dir: &Path, depth: usize) -> io::Result<Vec<Node>> {
             } else {
                 Vec::new()
             };
-            nodes.push(Node { path, name, kind: NodeKind::Folder, modified, children });
+            nodes.push(Node {
+                path,
+                name,
+                kind: NodeKind::Folder,
+                modified,
+                children,
+            });
         } else if Path::new(&name).extension().is_some_and(|x| x == "md") {
             let name = Path::new(&name)
                 .file_stem()
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or(name);
-            nodes.push(Node { path, name, kind: NodeKind::Note, modified, children: Vec::new() });
+            nodes.push(Node {
+                path,
+                name,
+                kind: NodeKind::Note,
+                modified,
+                children: Vec::new(),
+            });
         }
     }
     nodes.sort_by(|a, b| match (a.is_folder(), b.is_folder()) {
@@ -112,13 +129,14 @@ fn flatten_into(nodes: &[Node], depth: usize, expanded: &HashSet<PathBuf>, out: 
 }
 
 /// Most recently modified note anywhere in the tree.
-pub fn newest_note(nodes: &[Node]) -> Option<PathBuf> {
+pub fn newest_note(nodes: &[Node], except: Option<&Path>) -> Option<PathBuf> {
     let mut best: Option<&Node> = None;
     let mut stack: Vec<&Node> = nodes.iter().collect();
     while let Some(n) = stack.pop() {
         if n.is_folder() {
             stack.extend(n.children.iter());
-        } else if best.is_none_or(|b| n.modified > b.modified) {
+        } else if except.is_none_or(|x| n.path != x) && best.is_none_or(|b| n.modified > b.modified)
+        {
             best = Some(n);
         }
     }
@@ -127,7 +145,9 @@ pub fn newest_note(nodes: &[Node]) -> Option<PathBuf> {
 
 /// Whether `path` exists anywhere in the tree.
 pub fn contains(nodes: &[Node], path: &Path) -> bool {
-    nodes.iter().any(|n| n.path == path || contains(&n.children, path))
+    nodes
+        .iter()
+        .any(|n| n.path == path || contains(&n.children, path))
 }
 
 /// A filesystem-safe note/file name: no separators, reserved characters or
@@ -135,18 +155,28 @@ pub fn contains(nodes: &[Node], path: &Path) -> bool {
 pub fn stem_for_title(title: &str) -> String {
     let cleaned: String = title
         .chars()
-        .filter(|c| !matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') && !c.is_control())
+        .filter(|c| {
+            !matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|') && !c.is_control()
+        })
         .collect();
     let trimmed = cleaned.trim().trim_matches('.').trim();
     let stem: String = trimmed.chars().take(80).collect();
-    if stem.is_empty() { "Sem título".to_string() } else { stem }
+    if stem.is_empty() {
+        "Sem título".to_string()
+    } else {
+        stem
+    }
 }
 
 /// `X.md`, `X 2.md`, … — `exclude` is the file being renamed so renaming to
 /// itself is fine.
 pub fn unique_path(dir: &Path, stem: &str, exclude: Option<&Path>) -> PathBuf {
     for n in 1.. {
-        let name = if n == 1 { format!("{stem}.md") } else { format!("{stem} {n}.md") };
+        let name = if n == 1 {
+            format!("{stem}.md")
+        } else {
+            format!("{stem} {n}.md")
+        };
         let path = dir.join(name);
         if exclude == Some(path.as_path()) || !path.exists() {
             return path;
@@ -174,9 +204,10 @@ pub fn synced_stem(stem: &str, title: &str) -> bool {
     }
     let base = stem_for_title(title);
     stem == base
-        || stem
-            .strip_prefix(base.as_str())
-            .is_some_and(|r| r.strip_prefix(' ').is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit())))
+        || stem.strip_prefix(base.as_str()).is_some_and(|r| {
+            r.strip_prefix(' ')
+                .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+        })
 }
 
 #[cfg(test)]
@@ -190,7 +221,10 @@ mod tests {
             let dir = std::env::temp_dir().join(format!(
                 "abstract-vault-test-{}-{}",
                 std::process::id(),
-                SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos()
+                SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
             ));
             fs::create_dir_all(&dir).unwrap();
             Self(dir)

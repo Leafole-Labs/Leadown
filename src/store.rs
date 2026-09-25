@@ -15,11 +15,15 @@ pub(crate) fn xdg(var: &str, fallback: &str) -> PathBuf {
 }
 
 fn settings_file() -> PathBuf {
-    xdg("XDG_CONFIG_HOME", ".config").join("abstract").join("settings")
+    xdg("XDG_CONFIG_HOME", ".config")
+        .join("abstract")
+        .join("settings")
 }
 
 fn session_file() -> PathBuf {
-    xdg("XDG_STATE_HOME", ".local/state").join("abstract").join("session")
+    xdg("XDG_STATE_HOME", ".local/state")
+        .join("abstract")
+        .join("session")
 }
 
 /// Write via a hidden sibling temp file + rename so a crash never leaves a
@@ -48,7 +52,12 @@ pub struct KeyVals {
 impl KeyVals {
     pub fn parse(src: &str) -> Self {
         Self {
-            lines: src.lines().map(str::trim).filter(|l| !l.is_empty()).map(str::to_string).collect(),
+            lines: src
+                .lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+                .map(str::to_string)
+                .collect(),
         }
     }
 
@@ -98,7 +107,9 @@ impl Settings {
     }
 
     pub fn theme(&self) -> ThemePref {
-        self.kv.get("theme").map_or(ThemePref::System, ThemePref::parse)
+        self.kv
+            .get("theme")
+            .map_or(ThemePref::System, ThemePref::parse)
     }
 
     pub fn tour_done(&self) -> bool {
@@ -117,7 +128,10 @@ impl Settings {
     pub fn save(&self) {
         let file = settings_file();
         if let Err(err) = write_atomic(&file, self.kv.serialize().as_bytes()) {
-            eprintln!("abstract: failed to save settings to {}: {err}", file.display());
+            eprintln!(
+                "abstract: failed to save settings to {}: {err}",
+                file.display()
+            );
         }
     }
 }
@@ -204,7 +218,8 @@ impl Session {
 
     pub fn set_window(&mut self, w: &SessionWindow) {
         let mode = if w.maximized { "maximized" } else { "windowed" };
-        self.kv.set("window", &format!("{mode} {} {} {} {}", w.x, w.y, w.w, w.h));
+        self.kv
+            .set("window", &format!("{mode} {} {} {} {}", w.x, w.y, w.w, w.h));
     }
 
     pub fn set_sidebar(&mut self, open: bool) {
@@ -219,7 +234,9 @@ impl Session {
             if space.contains(['\t', '\n']) || rel.contains(['\t', '\n']) {
                 continue;
             }
-            self.kv.lines.push(format!("note = {space}\t{rel}\t{}\t{}", n.cursor, n.scroll));
+            self.kv
+                .lines
+                .push(format!("note = {space}\t{rel}\t{}\t{}", n.cursor, n.scroll));
         }
     }
 
@@ -227,7 +244,10 @@ impl Session {
     pub fn save(&self) {
         let file = session_file();
         if let Err(err) = write_atomic(&file, self.kv.serialize().as_bytes()) {
-            eprintln!("abstract: failed to save session to {}: {err}", file.display());
+            eprintln!(
+                "abstract: failed to save session to {}: {err}",
+                file.display()
+            );
         }
     }
 }
@@ -238,12 +258,16 @@ mod tests {
 
     #[test]
     fn settings_roundtrip_preserves_unknown_keys() {
-        let mut s = Settings { kv: KeyVals::parse("theme = dark\nfuture-key = 1 2\ntour = done\n") };
+        let mut s = Settings {
+            kv: KeyVals::parse("theme = dark\nfuture-key = 1 2\ntour = done\n"),
+        };
         assert_eq!(s.theme(), ThemePref::Dark);
         assert!(s.tour_done());
         s.set_theme(ThemePref::Light);
         let text = s.kv.serialize();
-        let again = Settings { kv: KeyVals::parse(&text) };
+        let again = Settings {
+            kv: KeyVals::parse(&text),
+        };
         assert_eq!(again.theme(), ThemePref::Light);
         assert!(again.tour_done());
         assert_eq!(again.kv.get("future-key"), Some("1 2"));
@@ -253,7 +277,9 @@ mod tests {
 
     #[test]
     fn settings_defaults_on_garbage() {
-        let s = Settings { kv: KeyVals::parse("not a key value line\n===\ntheme\n") };
+        let s = Settings {
+            kv: KeyVals::parse("not a key value line\n===\ntheme\n"),
+        };
         assert_eq!(s.theme(), ThemePref::System);
         assert!(!s.tour_done());
     }
@@ -261,7 +287,9 @@ mod tests {
     #[test]
     fn session_roundtrip() {
         let mut s = Session {
-            kv: KeyVals::parse("window = maximized 10 20 1100 720\nsidebar = closed\nweird\nnote = /a\tb/c.md\t12\t3.5\nnote = /a\td.md\t0\t0\n"),
+            kv: KeyVals::parse(
+                "window = maximized 10 20 1100 720\nsidebar = closed\nweird\nnote = /a\tb/c.md\t12\t3.5\nnote = /a\td.md\t0\t0\n",
+            ),
         };
         let w = s.window().unwrap();
         assert!(w.maximized && w.w == 1100.);
@@ -272,7 +300,13 @@ mod tests {
         assert_eq!(notes[0].cursor, 12);
         assert_eq!(notes[0].scroll, 3.5);
 
-        s.set_window(&SessionWindow { maximized: false, x: 1., y: 2., w: 800., h: 600. });
+        s.set_window(&SessionWindow {
+            maximized: false,
+            x: 1.,
+            y: 2.,
+            w: 800.,
+            h: 600.,
+        });
         s.set_sidebar(true);
         let mut notes = notes;
         notes.push(SessionNote {
@@ -282,7 +316,9 @@ mod tests {
             scroll: 0.,
         });
         s.set_notes(&notes);
-        let again = Session { kv: KeyVals::parse(&s.kv.serialize()) };
+        let again = Session {
+            kv: KeyVals::parse(&s.kv.serialize()),
+        };
         assert_eq!(again.window().unwrap().w, 800.);
         assert!(!again.window().unwrap().maximized);
         assert_eq!(again.sidebar_open(), Some(true));
@@ -294,7 +330,9 @@ mod tests {
 
     #[test]
     fn session_malformed_values() {
-        let s = Session { kv: KeyVals::parse("window = banana\nsidebar = maybe\nnote = /a\tb.md\n") };
+        let s = Session {
+            kv: KeyVals::parse("window = banana\nsidebar = maybe\nnote = /a\tb.md\n"),
+        };
         assert_eq!(s.window(), None);
         assert_eq!(s.sidebar_open(), None);
         assert!(s.notes().is_empty());

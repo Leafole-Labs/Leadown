@@ -70,7 +70,11 @@ impl Analyzer {
         }
         lines.push((start..len, Kind::Body));
 
-        let mut out = Analysis { flags: vec![0; len], lines, conceals: Vec::new() };
+        let mut out = Analysis {
+            flags: vec![0; len],
+            lines,
+            conceals: Vec::new(),
+        };
         if len == 0 {
             return out;
         }
@@ -83,7 +87,9 @@ impl Analyzer {
             owned = format!("{text}\n");
             &owned
         };
-        let Some(tree) = self.block.parse(source, None) else { return out };
+        let Some(tree) = self.block.parse(source, None) else {
+            return out;
+        };
 
         let mut inline_ranges: Vec<TsRange> = Vec::new();
         walk(&mut tree.walk(), |node| {
@@ -140,8 +146,12 @@ impl Analyzer {
                     out.conceal(out.lines[line].0.clone(), range);
                     false
                 }
-                "list_marker_minus" | "list_marker_plus" | "list_marker_star" | "list_marker_dot"
-                | "list_marker_parenthesis" | "task_list_marker_checked"
+                "list_marker_minus"
+                | "list_marker_plus"
+                | "list_marker_star"
+                | "list_marker_dot"
+                | "list_marker_parenthesis"
+                | "task_list_marker_checked"
                 | "task_list_marker_unchecked" => {
                     out.mark(range, MARK);
                     false
@@ -153,13 +163,19 @@ impl Analyzer {
                     out.conceal(line.clone(), line);
                     false
                 }
-                "html_block" | "minus_metadata" | "plus_metadata" | "link_reference_definition"
+                "html_block"
+                | "minus_metadata"
+                | "plus_metadata"
+                | "link_reference_definition"
                 | "pipe_table_delimiter_row" => {
                     out.mark(range, MUTED);
                     false
                 }
                 "pipe_table_cell" => {
-                    if node.parent().is_some_and(|p| p.kind() == "pipe_table_header") {
+                    if node
+                        .parent()
+                        .is_some_and(|p| p.kind() == "pipe_table_header")
+                    {
                         out.mark(range, BOLD);
                     }
                     inline_ranges.push(node.range());
@@ -208,8 +224,11 @@ impl Analyzer {
                         out.mark(range, CODE);
                         return false;
                     }
-                    "inline_link" | "full_reference_link" | "collapsed_reference_link"
-                    | "shortcut_link" | "image" => {
+                    "inline_link"
+                    | "full_reference_link"
+                    | "collapsed_reference_link"
+                    | "shortcut_link"
+                    | "image" => {
                         let keep = if node.kind() == "image" {
                             ("image_description", MUTED | ITALIC)
                         } else {
@@ -220,7 +239,8 @@ impl Analyzer {
                         let mut visible = None;
                         for child in node.children(&mut cursor) {
                             if child.kind() == keep.0 || child.kind() == "link_label" {
-                                visible = Some(child.start_byte().min(len)..child.end_byte().min(len));
+                                visible =
+                                    Some(child.start_byte().min(len)..child.end_byte().min(len));
                                 break;
                             }
                         }
@@ -264,7 +284,9 @@ impl Analyzer {
 
 impl Analysis {
     pub fn line_of(&self, offset: usize) -> usize {
-        self.lines.partition_point(|(r, _)| r.start <= offset).saturating_sub(1)
+        self.lines
+            .partition_point(|(r, _)| r.start <= offset)
+            .saturating_sub(1)
     }
 
     fn mark(&mut self, range: Range<usize>, flag: u16) {
@@ -290,7 +312,9 @@ impl Analysis {
     pub fn visible(&self, line: Range<usize>, sel: &Range<usize>) -> Vec<Range<usize>> {
         let mut out = Vec::new();
         let mut pos = line.start;
-        let first = self.conceals.partition_point(|c| c.hidden.end <= line.start);
+        let first = self
+            .conceals
+            .partition_point(|c| c.hidden.end <= line.start);
         for c in &self.conceals[first..] {
             if c.hidden.start >= line.end {
                 break;
@@ -384,7 +408,12 @@ mod tests {
         let sel = cursor..cursor;
         a.lines
             .iter()
-            .map(|(r, _)| a.visible(r.clone(), &sel).into_iter().map(|v| &text[v]).collect::<String>())
+            .map(|(r, _)| {
+                a.visible(r.clone(), &sel)
+                    .into_iter()
+                    .map(|v| &text[v])
+                    .collect::<String>()
+            })
             .collect::<Vec<_>>()
             .join("\n")
     }

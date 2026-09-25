@@ -1,6 +1,7 @@
 //! First-run coach marks: a bubble anchored to each highlighted element.
 //! Steps advance with buttons or Enter/→, go back with ←, and skip with Esc.
 
+use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use crate::theme::PaletteAccess;
@@ -130,7 +131,9 @@ pub fn bubble(step: usize, focus: FocusHandle, cx: &mut Context<AbstractApp>) ->
                         btn("tour-back", "Voltar")
                             .text_color(rgb(p.dim))
                             .hover(|s| s.bg(rgb(p.hover)))
-                            .on_click(cx.listener(|this, _, window, cx| this.tour_back(window, cx))),
+                            .on_click(
+                                cx.listener(|this, _, window, cx| this.tour_back(window, cx)),
+                            ),
                     )
                 })
                 .child(
@@ -157,7 +160,13 @@ pub fn mark(
             .anchor(anchor)
             .offset(offset)
             .snap_to_window_with_margin(px(8.))
-            .child(rise(bubble(step, focus, cx), ("tour-step", step), 220, 0., 6.)),
+            .child(rise(
+                div().child(bubble(step, focus, cx)),
+                ("tour-step", step),
+                220,
+                0.,
+                6.,
+            )),
     )
     .with_priority(1)
 }
