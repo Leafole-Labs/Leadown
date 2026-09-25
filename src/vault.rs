@@ -129,13 +129,14 @@ fn flatten_into(nodes: &[Node], depth: usize, expanded: &HashSet<PathBuf>, out: 
 }
 
 /// Most recently modified note anywhere in the tree.
-pub fn newest_note(nodes: &[Node]) -> Option<PathBuf> {
+pub fn newest_note(nodes: &[Node], except: Option<&Path>) -> Option<PathBuf> {
     let mut best: Option<&Node> = None;
     let mut stack: Vec<&Node> = nodes.iter().collect();
     while let Some(n) = stack.pop() {
         if n.is_folder() {
             stack.extend(n.children.iter());
-        } else if best.is_none_or(|b| n.modified > b.modified) {
+        } else if except.is_none_or(|x| n.path != x) && best.is_none_or(|b| n.modified > b.modified)
+        {
             best = Some(n);
         }
     }

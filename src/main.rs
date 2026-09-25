@@ -32,7 +32,7 @@ const SAVE_DEBOUNCE: Duration = Duration::from_millis(400);
 
 /// Embedded Hugeicons (stroke-rounded, MIT). Anything else falls through to
 /// the component library's default icon set.
-const ICONS: [(&str, &[u8]); 12] = [
+const ICONS: [(&str, &[u8]); 14] = [
     (
         "icons/add.svg",
         include_bytes!("../assets/icons/add-01.svg"),
@@ -70,8 +70,16 @@ const ICONS: [(&str, &[u8]); 12] = [
         include_bytes!("../assets/icons/minus-sign.svg"),
     ),
     (
+        "icons/monitor.svg",
+        include_bytes!("../assets/icons/monitor.svg"),
+    ),
+    (
         "icons/note.svg",
         include_bytes!("../assets/icons/note-01.svg"),
+    ),
+    (
+        "icons/pencil.svg",
+        include_bytes!("../assets/icons/pencil.svg"),
     ),
     (
         "icons/restore.svg",
@@ -465,12 +473,17 @@ impl AbstractApp {
         let Ok(rel) = path.strip_prefix(&self.dir) else {
             return;
         };
-        if rel.as_os_str().is_empty() {
+        // Nothing on disk yet (unwritten pending note) means nothing to
+        // restore later.
+        if rel.as_os_str().is_empty() || !path.exists() {
             return;
         }
         let (cursor, scroll) = self.editor.read(cx).view_state();
+        // Drop the old entry for `rel` and any rel that no longer exists on
+        // disk (renamed-away pending notes, externally deleted files).
+        let dir = self.dir.clone();
         self.session_notes
-            .retain(|n| !(n.space == self.dir && n.rel == rel));
+            .retain(|n| n.space != dir || (n.rel != rel && dir.join(&n.rel).exists()));
         self.session_notes.push(SessionNote {
             space: self.dir.clone(),
             rel: rel.to_path_buf(),
@@ -624,8 +637,17 @@ impl AbstractApp {
                     Ok(tree) => this.tree = tree,
                     Err(err) => eprintln!("abstract: cannot read space: {err}"),
                 }
-                if this.pending_new.as_ref().is_some_and(|p| p.exists()) {
-                    this.pending_new = None;
+                // A pending note materializes on disk under either name: the
+                // planned `nota-*` one, or the title-synced one `write_note`
+                // picked. Both cases retire the ghost row.
+                if let Some(p) = &this.pending_new {
+                    let real = this
+                        .current
+                        .as_ref()
+                        .map(|c| c.file.lock().unwrap().path.clone());
+                    if p.exists() || real.is_some_and(|r| r != *p) {
+                        this.pending_new = None;
+                    }
                 }
                 cx.notify();
             })
@@ -825,7 +847,7 @@ impl AbstractApp {
         })
         .detach();
         // Open the next newest note, or a fresh one.
-        match vault::newest_note(&self.tree).filter(|p| *p != path) {
+        match vault::newest_note(&self.tree, Some(&path)) {
             Some(next) => self.open_path(next, None, window, cx),
             None => self.new_note(window, cx),
         }
@@ -1076,8 +1098,16 @@ impl AbstractApp {
     /// Update every path the app tracks after `old` moves to `new`.
     fn remap_prefix(&mut self, old: &Path, new: &Path, cx: &mut Context<Self>) {
         let remap = |p: &Path| -> PathBuf {
-            p.strip_prefix(old)
-                .map_or_else(|_| p.to_path_buf(), |rest| new.join(rest))
+            p.strip_prefix(old).map_or_else(
+                |_| p.to_path_buf(),
+                |rest| {
+                    if rest.as_os_str().is_empty() {
+                        new.to_path_buf()
+                    } else {
+                        new.join(rest)
+                    }
+                },
+            )
         };
         self.expanded = self.expanded.iter().map(|p| remap(p)).collect();
         if let Some(t) = &self.target_folder {
@@ -1332,7 +1362,7 @@ impl AbstractApp {
                     Some((p, cursor, scroll)) if vault::contains(&this.tree, &p) => {
                         this.open_path(p, Some((cursor, scroll)), window, cx)
                     }
-                    _ => match vault::newest_note(&this.tree) {
+                    _ => match vault::newest_note(&this.tree, None) {
                         Some(p) => this.open_path(p, None, window, cx),
                         None => this.new_note(window, cx),
                     },
