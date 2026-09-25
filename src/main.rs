@@ -157,6 +157,7 @@ actions!(
         OpenSpace,
         ToggleSpaces,
         StartTour,
+        Quit,
     ]
 );
 
@@ -1356,7 +1357,7 @@ impl AbstractApp {
                 let restore = this
                     .session_notes
                     .iter()
-                    .find(|n| n.space == this.dir)
+                    .rfind(|n| n.space == this.dir)
                     .map(|n| (this.dir.join(&n.rel), n.cursor, n.scroll));
                 match restore {
                     Some((p, cursor, scroll)) if vault::contains(&this.tree, &p) => {
@@ -2204,6 +2205,7 @@ fn bind_keys(cx: &mut App) {
         KeyBinding::new("ctrl-shift-backspace", DeleteNote, c),
         KeyBinding::new("f2", RenameNote, c),
         KeyBinding::new("f1", StartTour, c),
+        KeyBinding::new("cmd-q", Quit, c),
     ]);
 }
 
@@ -2232,6 +2234,7 @@ impl Render for AbstractApp {
             .on_action(cx.listener(|this, _: &OpenSpace, window, cx| this.open_space(window, cx)))
             .on_action(cx.listener(|this, _: &ToggleSpaces, _, cx| this.toggle_spaces(cx)))
             .on_action(cx.listener(|this, _: &StartTour, window, cx| this.start_tour(window, cx)))
+            .on_action(cx.listener(|_, _: &Quit, _, cx| cx.quit()))
             .child(self.render_sidebar(cx))
             .child(self.render_main(window, cx))
     }
@@ -2245,6 +2248,8 @@ fn main() {
             editor::bind_keys(cx);
             tour::bind_keys(cx);
             bind_keys(cx);
+            cx.on_action(|_: &Quit, cx| cx.quit());
+            cx.set_menus([Menu::new("abstract").items([MenuItem::action("Quit abstract", Quit)])]);
 
             let settings = Settings::load();
             let session = Session::load();
