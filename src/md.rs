@@ -1,0 +1,432 @@
+//! Markdown analysis for the live editor: per-byte inline flags, per-line block
+//! kinds, and concealable syntax (delimiters hidden unless the selection
+//! touches the construct that owns them).
+
+use std::ops::Range;
+
+use tree_sitter::{Node, Parser, Range as TsRange, TreeCursor};
+
+pub const BOLD: u16 = 1;
+pub const ITALIC: u16 = 2;
+pub const UNDERLINE: u16 = 4;
+pub const STRIKE: u16 = 8;
+pub const CODE: u16 = 16;
+pub const LINK: u16 = 32;
+pub const MARK: u16 = 64;
+pub const MUTED: u16 = 128;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Kind {
+    Body,
+    Heading(u8),
+    Code,
+    Quote,
+    Rule,
+}
+
+/// `owner` reveals `hidden` when the selection touches it (inclusive ends).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Conceal {
+    pub owner: Range<usize>,
+    pub hidden: Range<usize>,
+}
+
+#[derive(Default)]
+pub struct Analysis {
+    pub flags: Vec<u16>,
+    /// Buffer lines without their `\n`, in order; always at least one.
+    pub lines: Vec<(Range<usize>, Kind)>,
+    /// Sorted by `hidden.start`.
+    pub conceals: Vec<Conceal>,
+}
+
+pub struct Analyzer {
+    block: Parser,
+    inline: Parser,
+}
+
+impl Analyzer {
+    pub fn new() -> Self {
+        let mut block = Parser::new();
+        block
+            .set_language(&tree_sitter_md::LANGUAGE.into())
+            .expect("tree-sitter-md block grammar");
+        let mut inline = Parser::new();
+        inline
+            .set_language(&tree_sitter_md::INLINE_LANGUAGE.into())
+            .expect("tree-sitter-md inline grammar");
+        Self { block, inline }
+    }
+
+    pub fn analyze(&mut self, text: &str) -> Analysis {
+        let len = text.len();
+        let mut lines = Vec::new();
+        let mut start = 0;
+        for (i, b) in text.bytes().enumerate() {
+            if b == b'\n' {
+                lines.push((start..i, Kind::Body));
+                start = i + 1;
+            }
+        }
+        lines.push((start..len, Kind::Body));
+
+        let mut out = Analysis { flags: vec![0; len], lines, conceals: Vec::new() };
+        if len == 0 {
+            return out;
+        }
+        // tree-sitter-md errors on a last line without a line ending (the line
+        // being typed at EOF), so parse a newline-terminated copy.
+        let owned;
+        let source: &str = if text.ends_with('\n') {
+            text
+        } else {
+            owned = format!("{text}\n");
+            &owned
+        };
+        let Some(tree) = self.block.parse(source, None) else { return out };
+
+        let mut inline_ranges: Vec<TsRange> = Vec::new();
+        walk(&mut tree.walk(), |node| {
+            let range = node.start_byte().min(len)..node.end_byte().min(len);
+            match node.kind() {
+                "atx_heading" => {
+                    let level = heading_level(node);
+                    let line = out.line_of(range.start);
+                    out.lines[line].1 = Kind::Heading(level);
+                    let line_range = out.lines[line].0.clone();
+                    let mut cursor = node.walk();
+                    let marker_start = range.start;
+                    let content_start = node
+                        .children(&mut cursor)
+                        .find(|c| c.kind() == "inline")
+                        .map_or(line_range.end, |c| c.start_byte().min(len));
+                    out.mark(marker_start..content_start, MARK);
+                    out.conceal(line_range, marker_start..content_start);
+                    true
+                }
+                "setext_heading" => {
+                    let level = heading_level(node);
+                    let mut cursor = node.walk();
+                    for child in node.children(&mut cursor) {
+                        let r = child.start_byte().min(len)..child.end_byte().min(len);
+                        if child.kind() == "paragraph" {
+                            out.set_kind(r, Kind::Heading(level));
+                        } else {
+                            out.mark(r, MUTED);
+                        }
+                    }
+                    true
+                }
+                "fenced_code_block" | "indented_code_block" => {
+                    out.set_kind(range.clone(), Kind::Code);
+                    let mut cursor = node.walk();
+                    for child in node.children(&mut cursor) {
+                        if matches!(child.kind(), "fenced_code_block_delimiter" | "info_string") {
+                            let r = child.start_byte().min(len)..child.end_byte().min(len);
+                            out.mark(r.clone(), MUTED);
+                            // Fence text disappears (the line stays as block
+                            // padding) until the selection enters the block.
+                            out.conceal(range.clone(), r);
+                        }
+                    }
+                    false
+                }
+                "block_quote_marker" => {
+                    let line = out.line_of(range.start);
+                    if out.lines[line].1 == Kind::Body {
+                        out.lines[line].1 = Kind::Quote;
+                    }
+                    out.mark(range.clone(), MARK);
+                    out.conceal(out.lines[line].0.clone(), range);
+                    false
+                }
+                "list_marker_minus" | "list_marker_plus" | "list_marker_star" | "list_marker_dot"
+                | "list_marker_parenthesis" | "task_list_marker_checked"
+                | "task_list_marker_unchecked" => {
+                    out.mark(range, MARK);
+                    false
+                }
+                "thematic_break" => {
+                    out.set_kind(range.clone(), Kind::Rule);
+                    out.mark(range.clone(), MUTED);
+                    let line = out.lines[out.line_of(range.start)].0.clone();
+                    out.conceal(line.clone(), line);
+                    false
+                }
+                "html_block" | "minus_metadata" | "plus_metadata" | "link_reference_definition"
+                | "pipe_table_delimiter_row" => {
+                    out.mark(range, MUTED);
+                    false
+                }
+                "pipe_table_cell" => {
+                    if node.parent().is_some_and(|p| p.kind() == "pipe_table_header") {
+                        out.mark(range, BOLD);
+                    }
+                    inline_ranges.push(node.range());
+                    false
+                }
+                "inline" => {
+                    inline_ranges.push(node.range());
+                    false
+                }
+                _ => true,
+            }
+        });
+
+        if !inline_ranges.is_empty()
+            && self.inline.set_included_ranges(&inline_ranges).is_ok()
+            && let Some(tree) = self.inline.parse(source, None)
+        {
+            walk(&mut tree.walk(), |node| {
+                let range = node.start_byte().min(len)..node.end_byte().min(len);
+                match node.kind() {
+                    "emphasis" => out.mark(range, ITALIC),
+                    "strong_emphasis" => {
+                        // `__x__` underlines; `**x**` bolds.
+                        let flag = if text.as_bytes().get(range.start) == Some(&b'_') {
+                            UNDERLINE
+                        } else {
+                            BOLD
+                        };
+                        out.mark(range, flag);
+                    }
+                    "strikethrough" => out.mark(range, STRIKE),
+                    "emphasis_delimiter" => {
+                        let owner = node.parent().map_or(range.clone(), outermost_same_kind);
+                        out.mark(range.clone(), MARK);
+                        out.conceal(owner, range);
+                        return false;
+                    }
+                    "code_span" => {
+                        let mut cursor = node.walk();
+                        for child in node.children(&mut cursor) {
+                            if child.kind() == "code_span_delimiter" {
+                                let r = child.start_byte().min(len)..child.end_byte().min(len);
+                                out.conceal(range.clone(), r);
+                            }
+                        }
+                        out.mark(range, CODE);
+                        return false;
+                    }
+                    "inline_link" | "full_reference_link" | "collapsed_reference_link"
+                    | "shortcut_link" | "image" => {
+                        let keep = if node.kind() == "image" {
+                            ("image_description", MUTED | ITALIC)
+                        } else {
+                            ("link_text", LINK)
+                        };
+                        let mut pos = range.start;
+                        let mut cursor = node.walk();
+                        let mut visible = None;
+                        for child in node.children(&mut cursor) {
+                            if child.kind() == keep.0 || child.kind() == "link_label" {
+                                visible = Some(child.start_byte().min(len)..child.end_byte().min(len));
+                                break;
+                            }
+                        }
+                        match visible {
+                            Some(v) => {
+                                out.mark(v.clone(), keep.1);
+                                out.mark(pos..v.start, MARK);
+                                out.conceal(range.clone(), pos..v.start);
+                                pos = v.end;
+                                out.mark(pos..range.end, MARK);
+                                out.conceal(range.clone(), pos..range.end);
+                            }
+                            None => out.mark(range, MUTED),
+                        }
+                        return false;
+                    }
+                    "uri_autolink" | "email_autolink" => {
+                        out.mark(range, LINK);
+                        return false;
+                    }
+                    "backslash_escape" => {
+                        out.mark(range.start..range.start + 1, MARK);
+                        out.conceal(range.clone(), range.start..range.start + 1);
+                        return false;
+                    }
+                    "html_tag" | "latex_block" => {
+                        out.mark(range, MUTED);
+                        return false;
+                    }
+                    _ => {}
+                }
+                true
+            });
+        }
+
+        out.conceals.retain(|c| !c.hidden.is_empty());
+        out.conceals.sort_by_key(|c| c.hidden.start);
+        out
+    }
+}
+
+impl Analysis {
+    pub fn line_of(&self, offset: usize) -> usize {
+        self.lines.partition_point(|(r, _)| r.start <= offset).saturating_sub(1)
+    }
+
+    fn mark(&mut self, range: Range<usize>, flag: u16) {
+        for f in &mut self.flags[range] {
+            *f |= flag;
+        }
+    }
+
+    fn conceal(&mut self, owner: Range<usize>, hidden: Range<usize>) {
+        self.conceals.push(Conceal { owner, hidden });
+    }
+
+    fn set_kind(&mut self, range: Range<usize>, kind: Kind) {
+        let first = self.line_of(range.start);
+        let last = self.line_of(range.end.saturating_sub(1).max(range.start));
+        for line in &mut self.lines[first..=last] {
+            line.1 = kind;
+        }
+    }
+
+    /// Visible sub-ranges of `line` after concealing syntax the selection does
+    /// not touch.
+    pub fn visible(&self, line: Range<usize>, sel: &Range<usize>) -> Vec<Range<usize>> {
+        let mut out = Vec::new();
+        let mut pos = line.start;
+        let first = self.conceals.partition_point(|c| c.hidden.end <= line.start);
+        for c in &self.conceals[first..] {
+            if c.hidden.start >= line.end {
+                break;
+            }
+            if c.owner.start <= sel.end && sel.start <= c.owner.end {
+                continue;
+            }
+            let start = c.hidden.start.max(pos);
+            if start > pos {
+                out.push(pos..start);
+            }
+            pos = pos.max(c.hidden.end.min(line.end));
+        }
+        if pos < line.end || out.is_empty() {
+            out.push(pos..line.end.max(pos));
+        }
+        out
+    }
+}
+
+fn walk(cursor: &mut TreeCursor<'_>, mut f: impl FnMut(Node<'_>) -> bool) {
+    loop {
+        if f(cursor.node()) && cursor.goto_first_child() {
+            continue;
+        }
+        while !cursor.goto_next_sibling() {
+            if !cursor.goto_parent() {
+                return;
+            }
+        }
+    }
+}
+
+fn heading_level(heading: Node<'_>) -> u8 {
+    let mut cursor = heading.walk();
+    heading
+        .children(&mut cursor)
+        .find_map(|c| match c.kind() {
+            "atx_h1_marker" | "setext_h1_underline" => Some(1),
+            "atx_h2_marker" | "setext_h2_underline" => Some(2),
+            "atx_h3_marker" => Some(3),
+            "atx_h4_marker" => Some(4),
+            "atx_h5_marker" => Some(5),
+            "atx_h6_marker" => Some(6),
+            _ => None,
+        })
+        .unwrap_or(1)
+}
+
+/// `~~x~~` parses as nested strikethrough nodes; the outer one owns all four
+/// tildes so they reveal together.
+fn outermost_same_kind(mut node: Node<'_>) -> Range<usize> {
+    while let Some(parent) = node.parent() {
+        if parent.kind() != node.kind() {
+            break;
+        }
+        node = parent;
+    }
+    node.byte_range()
+}
+
+/// Continuation for Enter on a list/quote line: `(prefix byte len, next prefix)`.
+pub fn list_prefix(line: &str) -> Option<(usize, String)> {
+    let indent = line.len() - line.trim_start_matches(' ').len();
+    let rest = &line[indent..];
+    let pad = &line[..indent];
+    for task in ["- [ ] ", "- [x] ", "- [X] ", "* [ ] ", "* [x] "] {
+        if rest.starts_with(task) {
+            return Some((indent + task.len(), format!("{pad}{}[ ] ", &task[..2])));
+        }
+    }
+    for marker in ["- ", "* ", "+ ", "> "] {
+        if rest.starts_with(marker) {
+            return Some((indent + 2, format!("{pad}{marker}")));
+        }
+    }
+    let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
+    if digits > 0 && rest[digits..].starts_with(". ") {
+        let n: u64 = rest[..digits].parse().ok()?;
+        return Some((indent + digits + 2, format!("{pad}{}. ", n + 1)));
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn shown(text: &str, cursor: usize) -> String {
+        let a = Analyzer::new().analyze(text);
+        let sel = cursor..cursor;
+        a.lines
+            .iter()
+            .map(|(r, _)| a.visible(r.clone(), &sel).into_iter().map(|v| &text[v]).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    #[test]
+    fn syntax_hidden_until_cursor_enters() {
+        let t = "# Title\nx *i* **b** __u__ ~~s~~ `c` [l](http://a)";
+        assert_eq!(shown(t, 0), "# Title\nx i b u s c l");
+        // Cursor on the heading line reveals its marker only.
+        assert_eq!(shown(t, 3), "# Title\nx i b u s c l");
+        // Cursor on line 2 far from constructs: heading marker hidden.
+        assert_eq!(shown(t, 9), "Title\nx i b u s c l");
+        // Cursor touching `**b**` reveals exactly that construct.
+        let b = t.find("**b").unwrap();
+        assert_eq!(shown(t, b + 3), "Title\nx i **b** u s c l");
+        let s = t.find("~~").unwrap();
+        assert_eq!(shown(t, s + 5), "Title\nx i b u ~~s~~ c l");
+    }
+
+    #[test]
+    fn flags_and_kinds() {
+        let t = "## H\n*i* **b** __u__ ~~s~~";
+        let a = Analyzer::new().analyze(t);
+        assert_eq!(a.lines[0].1, Kind::Heading(2));
+        let at = |s: &str| a.flags[t.find(s).unwrap()];
+        assert!(at("i*") & ITALIC != 0);
+        assert!(at("b*") & BOLD != 0);
+        assert!(at("u_") & UNDERLINE != 0 && at("u_") & BOLD == 0);
+        assert!(at("s~") & STRIKE != 0);
+    }
+
+    #[test]
+    fn heading_typed_at_eof() {
+        let a = Analyzer::new().analyze("# A");
+        assert_eq!(a.lines[0].1, Kind::Heading(1));
+    }
+
+    #[test]
+    fn list_continuation() {
+        assert_eq!(list_prefix("- item"), Some((2, "- ".into())));
+        assert_eq!(list_prefix("  9. x"), Some((5, "  10. ".into())));
+        assert_eq!(list_prefix("- [x] done"), Some((6, "- [ ] ".into())));
+        assert_eq!(list_prefix("plain"), None);
+    }
+}
