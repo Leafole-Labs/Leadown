@@ -156,5 +156,13 @@ pub fn apply(pref: ThemePref, appearance: WindowAppearance, cx: &mut App) {
         ),
     };
     cx.set_global(if light { LIGHT } else { DARK });
-    Theme::change(if light { ThemeMode::Light } else { ThemeMode::Dark }, None, cx);
+    Theme::change(
+        if light {
+            ThemeMode::Light
+        } else {
+            ThemeMode::Dark
+        },
+        None,
+        cx,
+    );
 }

@@ -13,8 +13,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
-use gpui_kit::component::input::{self, Input, InputState};
 use gpui_kit::component::Root;
+use gpui_kit::component::input::{self, Input, InputEvent, InputState};
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
@@ -33,18 +33,54 @@ const SAVE_DEBOUNCE: Duration = Duration::from_millis(400);
 /// Embedded Hugeicons (stroke-rounded, MIT). Anything else falls through to
 /// the component library's default icon set.
 const ICONS: [(&str, &[u8]); 12] = [
-    ("icons/add.svg", include_bytes!("../assets/icons/add-01.svg")),
-    ("icons/check.svg", include_bytes!("../assets/icons/tick-02.svg")),
-    ("icons/chevrons.svg", include_bytes!("../assets/icons/unfold-more.svg")),
-    ("icons/close.svg", include_bytes!("../assets/icons/cancel-01.svg")),
-    ("icons/delete.svg", include_bytes!("../assets/icons/delete-02.svg")),
-    ("icons/folder.svg", include_bytes!("../assets/icons/folder-01.svg")),
-    ("icons/folder-add.svg", include_bytes!("../assets/icons/folder-add.svg")),
-    ("icons/maximize.svg", include_bytes!("../assets/icons/square.svg")),
-    ("icons/minimize.svg", include_bytes!("../assets/icons/minus-sign.svg")),
-    ("icons/note.svg", include_bytes!("../assets/icons/note-01.svg")),
-    ("icons/restore.svg", include_bytes!("../assets/icons/square-arrow-shrink-02.svg")),
-    ("icons/sidebar.svg", include_bytes!("../assets/icons/view-sidebar-left.svg")),
+    (
+        "icons/add.svg",
+        include_bytes!("../assets/icons/add-01.svg"),
+    ),
+    (
+        "icons/check.svg",
+        include_bytes!("../assets/icons/tick-02.svg"),
+    ),
+    (
+        "icons/chevrons.svg",
+        include_bytes!("../assets/icons/unfold-more.svg"),
+    ),
+    (
+        "icons/close.svg",
+        include_bytes!("../assets/icons/cancel-01.svg"),
+    ),
+    (
+        "icons/delete.svg",
+        include_bytes!("../assets/icons/delete-02.svg"),
+    ),
+    (
+        "icons/folder.svg",
+        include_bytes!("../assets/icons/folder-01.svg"),
+    ),
+    (
+        "icons/folder-add.svg",
+        include_bytes!("../assets/icons/folder-add.svg"),
+    ),
+    (
+        "icons/maximize.svg",
+        include_bytes!("../assets/icons/square.svg"),
+    ),
+    (
+        "icons/minimize.svg",
+        include_bytes!("../assets/icons/minus-sign.svg"),
+    ),
+    (
+        "icons/note.svg",
+        include_bytes!("../assets/icons/note-01.svg"),
+    ),
+    (
+        "icons/restore.svg",
+        include_bytes!("../assets/icons/square-arrow-shrink-02.svg"),
+    ),
+    (
+        "icons/sidebar.svg",
+        include_bytes!("../assets/icons/view-sidebar-left.svg"),
+    ),
 ];
 
 /// Marks the synthetic sidebar row that hosts the new-folder input. Starts
@@ -63,13 +99,22 @@ impl AssetSource for AppAssets {
 
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
         let mut out = gpui_kit_assets::Assets.list(path)?;
-        out.extend(ICONS.iter().filter(|(p, _)| p.starts_with(path)).map(|(p, _)| (*p).into()));
+        out.extend(
+            ICONS
+                .iter()
+                .filter(|(p, _)| p.starts_with(path))
+                .map(|(p, _)| (*p).into()),
+        );
         Ok(out)
     }
 }
 
 fn icon(name: &'static str, color: u32) -> Svg {
-    svg().path(name).size(px(16.)).flex_none().text_color(rgb(color))
+    svg()
+        .path(name)
+        .size(px(16.))
+        .flex_none()
+        .text_color(rgb(color))
 }
 
 /// Quart-out fade + short travel. Keyed by `id`; a new id replays it.
@@ -94,8 +139,16 @@ pub(crate) fn rise<E: Styled + IntoElement + 'static>(
 actions!(
     abstract_app,
     [
-        NewNote, NewFolder, DeleteNote, RenameNote, SaveNow, CycleTheme, ToggleSidebar, OpenSpace,
-        ToggleSpaces, StartTour,
+        NewNote,
+        NewFolder,
+        DeleteNote,
+        RenameNote,
+        SaveNow,
+        CycleTheme,
+        ToggleSidebar,
+        OpenSpace,
+        ToggleSpaces,
+        StartTour,
     ]
 );
 
@@ -110,7 +163,9 @@ fn title_of(text: &str) -> SharedString {
 }
 
 fn stem_of(path: &Path) -> String {
-    path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()
+    path.file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }
 
 /// What the open note is on disk; shared with in-flight writes, which may
@@ -164,7 +219,9 @@ fn write_note(
     let from = f.path.clone();
     let mut target = from.clone();
     if synced {
-        let dir = from.parent().map_or_else(|| Path::new("."), Path::to_path_buf);
+        let dir = from
+            .parent()
+            .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
         target = vault::unique_path(&dir, &vault::stem_for_title(&title_of(text)), Some(&from));
     }
     let existed = from.exists();
@@ -221,7 +278,12 @@ struct AbstractApp {
 }
 
 impl AbstractApp {
-    fn new(window: &mut Window, cx: &mut Context<Self>, settings: Settings, session: Session) -> Self {
+    fn new(
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        settings: Settings,
+        session: Session,
+    ) -> Self {
         let editor = cx.new(LiveEditor::new);
         let on_change = cx.subscribe(&editor, |this: &mut Self, editor, _: &Changed, cx| {
             let text = editor.read(cx).text();
@@ -244,7 +306,10 @@ impl AbstractApp {
         });
 
         let mut app = Self {
-            spaces: Spaces { paths: vec![PathBuf::new()], active: 0 },
+            spaces: Spaces {
+                paths: vec![PathBuf::new()],
+                active: 0,
+            },
             spaces_open: false,
             dir: PathBuf::new(),
             tree: Vec::new(),
@@ -277,8 +342,12 @@ impl AbstractApp {
         };
         app.sidebar_open = app.session.sidebar_open().unwrap_or(true);
         app._io_task = Some(cx.spawn_in(window, async move |this, cx| {
-            let spaces = cx.background_executor().spawn(async { spaces::load() }).await;
-            this.update_in(cx, |this, window, cx| this.enter_space(spaces, window, cx)).ok();
+            let spaces = cx
+                .background_executor()
+                .spawn(async { spaces::load() })
+                .await;
+            this.update_in(cx, |this, window, cx| this.enter_space(spaces, window, cx))
+                .ok();
         }));
         app
     }
@@ -297,12 +366,15 @@ impl AbstractApp {
         self._save_task = Some(cx.spawn(async move |this, cx| {
             cx.background_executor().timer(SAVE_DEBOUNCE).await;
             // Path and text are captured now, not when the timer was set.
-            let Ok(text) = this.update(cx, |this, cx| this.current_text(cx)) else { return };
+            let Ok(text) = this.update(cx, |this, cx| this.current_text(cx)) else {
+                return;
+            };
             let result = cx
                 .background_executor()
                 .spawn(async move { write_note(&lock, &file, synced, &text) })
                 .await;
-            this.update(cx, |this, cx| this.finish_save(result, cx)).ok();
+            this.update(cx, |this, cx| this.finish_save(result, cx))
+                .ok();
         }));
     }
 
@@ -320,7 +392,8 @@ impl AbstractApp {
                 .background_executor()
                 .spawn(async move { write_note(&lock, &file, synced, &text) })
                 .await;
-            this.update(cx, |this, cx| this.finish_save(result, cx)).ok();
+            this.update(cx, |this, cx| this.finish_save(result, cx))
+                .ok();
         })
         .detach();
     }
@@ -357,7 +430,8 @@ impl AbstractApp {
             let write = cx.background_spawn(async move { write_note(&lock, &file, synced, &text) });
             cx.spawn(async move |this, cx| {
                 let result = write.await;
-                this.update(cx, |this, cx| this.finish_save(result, cx)).ok();
+                this.update(cx, |this, cx| this.finish_save(result, cx))
+                    .ok();
             })
             .detach();
         }
@@ -388,7 +462,9 @@ impl AbstractApp {
     fn record_session_note(&mut self, cx: &App) {
         let Some(cur) = &self.current else { return };
         let path = cur.file.lock().unwrap().path.clone();
-        let Ok(rel) = path.strip_prefix(&self.dir) else { return };
+        let Ok(rel) = path.strip_prefix(&self.dir) else {
+            return;
+        };
         if rel.as_os_str().is_empty() {
             return;
         }
@@ -417,7 +493,9 @@ impl AbstractApp {
     fn bounds_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.window_state = Some(session_window(window));
         self._bounds_task = Some(cx.spawn(async move |this, cx| {
-            cx.background_executor().timer(Duration::from_millis(500)).await;
+            cx.background_executor()
+                .timer(Duration::from_millis(500))
+                .await;
             this.update(cx, |this, cx| this.save_session(cx)).ok();
         }));
     }
@@ -446,7 +524,11 @@ impl AbstractApp {
                 })
                 .await;
             this.update(cx, |this, cx| {
-                if this.current.as_ref().is_none_or(|c| !Arc::ptr_eq(&c.file, &file)) {
+                if this
+                    .current
+                    .as_ref()
+                    .is_none_or(|c| !Arc::ptr_eq(&c.file, &file))
+                {
                     return;
                 }
                 if this.current.as_ref().unwrap().file.lock().unwrap().path != path {
@@ -491,7 +573,11 @@ impl AbstractApp {
                 })
                 .await;
             this.update(cx, |this, cx| {
-                if this.current.as_ref().is_none_or(|c| !Arc::ptr_eq(&c.file, &file)) {
+                if this
+                    .current
+                    .as_ref()
+                    .is_none_or(|c| !Arc::ptr_eq(&c.file, &file))
+                {
                     return;
                 }
                 {
@@ -529,7 +615,10 @@ impl AbstractApp {
     fn rescan_tree(&mut self, cx: &mut Context<Self>) {
         let dir = self.dir.clone();
         cx.spawn(async move |this, cx| {
-            let scanned = cx.background_executor().spawn(async move { vault::scan(&dir) }).await;
+            let scanned = cx
+                .background_executor()
+                .spawn(async move { vault::scan(&dir) })
+                .await;
             this.update(cx, |this, cx| {
                 match scanned {
                     Ok(tree) => this.tree = tree,
@@ -557,8 +646,19 @@ impl AbstractApp {
         }
     }
 
-    fn load_buffer(&mut self, file: NoteFile, synced: bool, text: String, restore: Option<(usize, f32)>, window: &mut Window, cx: &mut Context<Self>) {
-        self.current = Some(CurrentNote { file: Arc::new(Mutex::new(file)), synced });
+    fn load_buffer(
+        &mut self,
+        file: NoteFile,
+        synced: bool,
+        text: String,
+        restore: Option<(usize, f32)>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.current = Some(CurrentNote {
+            file: Arc::new(Mutex::new(file)),
+            synced,
+        });
         self.open_gen += 1;
         self.save = SaveState::Saved;
         self.words = text.split_whitespace().count();
@@ -573,8 +673,18 @@ impl AbstractApp {
         cx.notify();
     }
 
-    fn open_path(&mut self, path: PathBuf, restore: Option<(usize, f32)>, window: &mut Window, cx: &mut Context<Self>) {
-        if self.current.as_ref().is_some_and(|c| c.file.lock().unwrap().path == path) {
+    fn open_path(
+        &mut self,
+        path: PathBuf,
+        restore: Option<(usize, f32)>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self
+            .current
+            .as_ref()
+            .is_some_and(|c| c.file.lock().unwrap().path == path)
+        {
             return;
         }
         self.record_session_note(cx);
@@ -598,7 +708,11 @@ impl AbstractApp {
             this.update_in(cx, |this, window, cx| {
                 let synced = vault::synced_stem(&stem_of(&path), &title_of(&read.0));
                 this.load_buffer(
-                    NoteFile { path, mtime: read.1, deleted: false },
+                    NoteFile {
+                        path,
+                        mtime: read.1,
+                        deleted: false,
+                    },
                     synced,
                     read.0,
                     restore,
@@ -637,7 +751,18 @@ impl AbstractApp {
         self.expand_to(&path);
         self.pending_new = Some(path.clone());
         self.target_folder = None;
-        self.load_buffer(NoteFile { path, mtime: None, deleted: false }, true, String::new(), None, window, cx);
+        self.load_buffer(
+            NoteFile {
+                path,
+                mtime: None,
+                deleted: false,
+            },
+            true,
+            String::new(),
+            None,
+            window,
+            cx,
+        );
     }
 
     /// Send a path to the trash off-thread; failure only shows a notice.
@@ -647,7 +772,11 @@ impl AbstractApp {
                 .background_executor()
                 .spawn({
                     let p = path.clone();
-                    async move { trash::delete(&p).map_err(|e| eprintln!("abstract: cannot trash {}: {e}", p.display())).is_ok() }
+                    async move {
+                        trash::delete(&p)
+                            .map_err(|e| eprintln!("abstract: cannot trash {}: {e}", p.display()))
+                            .is_ok()
+                    }
                 })
                 .await;
             this.update(cx, |this, cx| {
@@ -662,7 +791,9 @@ impl AbstractApp {
     }
 
     fn delete_note(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(cur) = self.current.take() else { return };
+        let Some(cur) = self.current.take() else {
+            return;
+        };
         let path = cur.file.lock().unwrap().path.clone();
         self._save_task = None;
         self._io_task = None;
@@ -702,7 +833,13 @@ impl AbstractApp {
     }
 
     /// Row delete: notes go straight to the trash, folders ask first.
-    fn delete_row(&mut self, path: PathBuf, kind: NodeKind, window: &mut Window, cx: &mut Context<Self>) {
+    fn delete_row(
+        &mut self,
+        path: PathBuf,
+        kind: NodeKind,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         match kind {
             NodeKind::Note => {
                 let is_current = self
@@ -720,7 +857,10 @@ impl AbstractApp {
     }
 
     fn delete_folder(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
-        let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
         let prompt = window.prompt(
             PromptLevel::Warning,
             &format!("Mover a pasta “{name}” para a Lixeira?"),
@@ -734,7 +874,11 @@ impl AbstractApp {
             }
             this.update_in(cx, |this, _, cx| {
                 this.expanded.retain(|p| !p.starts_with(&path));
-                if this.target_folder.as_ref().is_some_and(|t| t.starts_with(&path)) {
+                if this
+                    .target_folder
+                    .as_ref()
+                    .is_some_and(|t| t.starts_with(&path))
+                {
                     this.target_folder = None;
                 }
                 // The open note inside it keeps its buffer as "removed".
@@ -753,14 +897,28 @@ impl AbstractApp {
 
     // ── Inline rename / create ────────────────────────────────────────────
 
-    fn start_edit(&mut self, target: PathBuf, kind: NodeKind, create: bool, value: String, window: &mut Window, cx: &mut Context<Self>) {
+    fn start_edit(
+        &mut self,
+        target: PathBuf,
+        kind: NodeKind,
+        create: bool,
+        value: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let state = cx.new(|cx| InputState::new(window, cx).default_value(value));
         let sub = cx.subscribe(&state, |this: &mut Self, _, ev: &InputEvent, cx| match ev {
             InputEvent::PressEnter { .. } => this.commit_edit(cx),
             InputEvent::Blur => this.cancel_edit(cx),
             _ => {}
         });
-        self.editing = Some(RenameEdit { state: state.clone(), target, kind, create, _sub: sub });
+        self.editing = Some(RenameEdit {
+            state: state.clone(),
+            target,
+            kind,
+            create,
+            _sub: sub,
+        });
         state.update(cx, |s, cx| {
             s.focus(window, cx);
             s.select_all(window, cx);
@@ -768,12 +926,21 @@ impl AbstractApp {
         cx.notify();
     }
 
-    fn start_rename(&mut self, path: PathBuf, kind: NodeKind, window: &mut Window, cx: &mut Context<Self>) {
+    fn start_rename(
+        &mut self,
+        path: PathBuf,
+        kind: NodeKind,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.editing.is_some() {
             return;
         }
         let name = match kind {
-            NodeKind::Folder => path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+            NodeKind::Folder => path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default(),
             NodeKind::Note => stem_of(&path),
         };
         self.start_edit(path, kind, false, name, window, cx);
@@ -795,11 +962,20 @@ impl AbstractApp {
         if dir != self.dir {
             self.expanded.insert(dir.clone());
         }
-        self.start_edit(dir, NodeKind::Folder, true, "Nova pasta".to_string(), window, cx);
+        self.start_edit(
+            dir,
+            NodeKind::Folder,
+            true,
+            "Nova pasta".to_string(),
+            window,
+            cx,
+        );
     }
 
     fn focus_edit(&mut self, cx: &mut Context<Self>) {
-        let Some(state) = self.editing.as_ref().map(|e| e.state.clone()) else { return };
+        let Some(state) = self.editing.as_ref().map(|e| e.state.clone()) else {
+            return;
+        };
         if let Some(w) = cx.windows().first().copied() {
             w.update(cx, |_, window, cx| {
                 state.update(cx, |s, cx| {
@@ -814,7 +990,10 @@ impl AbstractApp {
     fn focus_editor(&mut self, cx: &mut Context<Self>) {
         let editor = self.editor.clone();
         if let Some(w) = cx.windows().first().copied() {
-            w.update(cx, |_, window, cx| editor.update(cx, |ed, cx| ed.focus(window, cx))).ok();
+            w.update(cx, |_, window, cx| {
+                editor.update(cx, |ed, cx| ed.focus(window, cx))
+            })
+            .ok();
         }
     }
 
@@ -827,7 +1006,9 @@ impl AbstractApp {
     }
 
     fn commit_edit(&mut self, cx: &mut Context<Self>) {
-        let Some(ed) = self.editing.take() else { return };
+        let Some(ed) = self.editing.take() else {
+            return;
+        };
         let raw = ed.state.read(cx).value().to_string();
         if raw.trim().is_empty() {
             self.focus_editor(cx);
@@ -861,7 +1042,9 @@ impl AbstractApp {
             return;
         }
 
-        let Some(parent) = ed.target.parent().map(Path::to_path_buf) else { return };
+        let Some(parent) = ed.target.parent().map(Path::to_path_buf) else {
+            return;
+        };
         let newp = match ed.kind {
             NodeKind::Folder => parent.join(&name),
             NodeKind::Note => parent.join(format!("{name}.md")),
@@ -891,9 +1074,10 @@ impl AbstractApp {
     }
 
     /// Update every path the app tracks after `old` moves to `new`.
-    fn remap_prefix(&mut self, old: &Path, new: &Path) {
+    fn remap_prefix(&mut self, old: &Path, new: &Path, cx: &mut Context<Self>) {
         let remap = |p: &Path| -> PathBuf {
-            p.strip_prefix(old).map_or_else(|| p.to_path_buf(), |rest| new.join(rest))
+            p.strip_prefix(old)
+                .map_or_else(|_| p.to_path_buf(), |rest| new.join(rest))
         };
         self.expanded = self.expanded.iter().map(|p| remap(p)).collect();
         if let Some(t) = &self.target_folder {
@@ -904,7 +1088,9 @@ impl AbstractApp {
         }
         for n in &mut self.session_notes {
             if n.space == self.dir
-                && let Ok(rest) = n.rel.strip_prefix(old.strip_prefix(&self.dir).unwrap_or(old))
+                && let Ok(rest) = n
+                    .rel
+                    .strip_prefix(old.strip_prefix(&self.dir).unwrap_or(old))
             {
                 n.rel = new.strip_prefix(&self.dir).unwrap_or(new).join(rest);
             }
@@ -923,28 +1109,32 @@ impl AbstractApp {
         cx.spawn(async move |this, cx| {
             let ok = cx
                 .background_executor()
-                .spawn(async move {
-                    let _w = lock.lock().unwrap();
-                    match std::fs::rename(&old, &new) {
-                        Ok(()) => {
-                            if let Some(f) = inside {
-                                let mut f = f.lock().unwrap();
-                                if let Ok(rest) = f.path.strip_prefix(&old) {
-                                    f.path = new.join(rest);
+                .spawn({
+                    let old = old.clone();
+                    let new = new.clone();
+                    async move {
+                        let _w = lock.lock().unwrap();
+                        match std::fs::rename(&old, &new) {
+                            Ok(()) => {
+                                if let Some(f) = inside {
+                                    let mut f = f.lock().unwrap();
+                                    if let Ok(rest) = f.path.strip_prefix(&old) {
+                                        f.path = new.join(rest);
+                                    }
                                 }
+                                true
                             }
-                            true
-                        }
-                        Err(err) => {
-                            eprintln!("abstract: failed to rename folder: {err}");
-                            false
+                            Err(err) => {
+                                eprintln!("abstract: failed to rename folder: {err}");
+                                false
+                            }
                         }
                     }
                 })
                 .await;
             this.update(cx, |this, cx| {
                 if ok {
-                    this.remap_prefix(&old, &new);
+                    this.remap_prefix(&old, &new, cx);
                 } else {
                     this.notice = Some("Não foi possível renomear".into());
                 }
@@ -965,33 +1155,38 @@ impl AbstractApp {
         cx.spawn(async move |this, cx| {
             let ok = cx
                 .background_executor()
-                .spawn(async move {
-                    let _w = lock.lock().unwrap();
-                    if let Some(f) = &current {
-                        // Pending new note: the file does not exist yet, just
-                        // update the planned path.
-                        let mut f = f.lock().unwrap();
-                        if !old.exists() || std::fs::rename(&old, &new).is_ok() {
-                            f.path = new.clone();
-                            true
+                .spawn({
+                    let old = old.clone();
+                    let new = new.clone();
+                    let current = current.clone();
+                    async move {
+                        let _w = lock.lock().unwrap();
+                        if let Some(f) = &current {
+                            // Pending new note: the file does not exist yet, just
+                            // update the planned path.
+                            let mut f = f.lock().unwrap();
+                            if !old.exists() || std::fs::rename(&old, &new).is_ok() {
+                                f.path = new.clone();
+                                true
+                            } else {
+                                false
+                            }
                         } else {
-                            false
+                            std::fs::rename(&old, &new).is_ok()
                         }
-                    } else {
-                        std::fs::rename(&old, &new).is_ok()
                     }
                 })
                 .await;
             this.update(cx, |this, cx| {
                 if ok {
                     // Manual rename recomputes synced against the buffer.
-                    if let (Some(cur), Some(f)) = (this.current.as_mut(), current) {
-                        if Arc::ptr_eq(&cur.file, &f) {
-                            let title = title_of(this.editor.read(cx).text());
-                            cur.synced = vault::synced_stem(&stem_of(&new), &title);
-                        }
+                    if let (Some(cur), Some(f)) = (this.current.as_mut(), current)
+                        && Arc::ptr_eq(&cur.file, &f)
+                    {
+                        let title = title_of(this.editor.read(cx).text());
+                        cur.synced = vault::synced_stem(&stem_of(&new), &title);
                     }
-                    this.remap_prefix(&old, &new);
+                    this.remap_prefix(&old, &new, cx);
                 } else {
                     eprintln!("abstract: failed to rename {}", old.display());
                     this.notice = Some("Não foi possível renomear".into());
@@ -1052,15 +1247,27 @@ impl AbstractApp {
     }
 
     /// Coach mark + highlight ring for `step`, to hang on an anchor element.
-    fn mark(&self, step: usize, anchor: Anchor, offset: Point<Pixels>, cx: &mut Context<Self>) -> Option<AnyElement> {
-        (self.tour_step == Some(step))
-            .then(|| tour::mark(step, anchor, offset, self.tour_focus.clone(), cx).into_any_element())
+    fn mark(
+        &self,
+        step: usize,
+        anchor: Anchor,
+        offset: Point<Pixels>,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        (self.tour_step == Some(step)).then(|| {
+            tour::mark(step, anchor, offset, self.tour_focus.clone(), cx).into_any_element()
+        })
     }
 
-    fn ring(&self, step: usize, el: Stateful<Div>) -> Stateful<Div> {
-        let p = cx_palette(&self.theme_pref);
+    fn ring(&self, step: usize, el: Stateful<Div>, pal: &Palette) -> Stateful<Div> {
         el.when(self.tour_step == Some(step), |el| {
-            el.shadow(vec![gpui_base::box_shadow(px(0.), px(0.), px(0.), px(2.), hsla(p.fg))])
+            el.shadow(vec![gpui_base::box_shadow(
+                px(0.),
+                px(0.),
+                px(0.),
+                px(2.),
+                rgb(pal.fg).into(),
+            )])
         })
     }
 
@@ -1161,7 +1368,8 @@ impl AbstractApp {
         } else {
             self.spaces = spaces;
             let snapshot = self.spaces.clone();
-            cx.background_spawn(async move { spaces::save(&snapshot) }).detach();
+            cx.background_spawn(async move { spaces::save(&snapshot) })
+                .detach();
             cx.notify();
         }
     }
@@ -1176,8 +1384,12 @@ impl AbstractApp {
             prompt: Some("Abrir como espaço".into()),
         });
         cx.spawn_in(window, async move |this, cx| {
-            let Ok(Ok(Some(paths))) = picked.await else { return };
-            let Some(path) = paths.into_iter().next() else { return };
+            let Ok(Ok(Some(paths))) = picked.await else {
+                return;
+            };
+            let Some(path) = paths.into_iter().next() else {
+                return;
+            };
             this.update_in(cx, |this, window, cx| {
                 let mut spaces = this.spaces.clone();
                 spaces.activate_path(path);
@@ -1212,7 +1424,13 @@ impl AbstractApp {
             };
             rows.insert(
                 ix,
-                vault::Row { path: PathBuf::new(), name: String::new(), kind: NodeKind::Note, depth, expanded: false },
+                vault::Row {
+                    path: PathBuf::new(),
+                    name: String::new(),
+                    kind: NodeKind::Note,
+                    depth,
+                    expanded: false,
+                },
             );
             ix
         };
@@ -1235,17 +1453,31 @@ impl AbstractApp {
     }
 
     fn note_count(nodes: &[vault::Node]) -> usize {
-        nodes.iter().map(|n| if n.is_folder() { Self::note_count(&n.children) } else { 1 }).sum()
+        nodes
+            .iter()
+            .map(|n| {
+                if n.is_folder() {
+                    Self::note_count(&n.children)
+                } else {
+                    1
+                }
+            })
+            .sum()
     }
 
-    fn render_row(&self, ix: usize, row: &vault::Row, current: Option<&Path>, cx: &mut Context<Self>) -> Div {
+    fn render_row(
+        &self,
+        ix: usize,
+        row: &vault::Row,
+        current: Option<&Path>,
+        cx: &mut Context<Self>,
+    ) -> Stateful<Div> {
         let pal = cx.palette();
         let active = current == Some(row.path.as_path());
         let folder = row.kind == NodeKind::Folder;
-        let editing = self
-            .editing
-            .as_ref()
-            .is_some_and(|e| (!e.create && e.target == row.path) || (e.create && row.path.ends_with(NEW_FOLDER_ROW)));
+        let editing = self.editing.as_ref().is_some_and(|e| {
+            (!e.create && e.target == row.path) || (e.create && row.path.ends_with(NEW_FOLDER_ROW))
+        });
         let path = row.path.clone();
         let kind = row.kind;
 
@@ -1266,14 +1498,39 @@ impl AbstractApp {
             .line_height(px(18.))
             .text_color(rgb(if active { pal.fg } else { pal.dim }))
             .when(active, |s| s.bg(rgb(pal.active)))
-            .when(!active, |s| s.hover(|s| s.bg(rgb(pal.hover)).text_color(rgb(pal.body))))
+            .when(!active, |s| {
+                s.hover(|s| s.bg(rgb(pal.hover)).text_color(rgb(pal.body)))
+            })
             .active(|s| s.bg(rgb(pal.active)));
+        if !editing {
+            pill = pill.on_click(cx.listener({
+                let path = path.clone();
+                move |this, _, window, cx| match kind {
+                    NodeKind::Folder => this.toggle_folder(path.clone(), cx),
+                    NodeKind::Note => this.open_path(path.clone(), None, window, cx),
+                }
+            }));
+        }
         if folder {
             pill = pill
-                .child(icon(if row.expanded { "icons/chevron-down.svg" } else { "icons/chevron-right.svg" }, pal.faint).size(px(12.)))
+                .child(
+                    icon(
+                        if row.expanded {
+                            "icons/chevron-down.svg"
+                        } else {
+                            "icons/chevron-right.svg"
+                        },
+                        pal.faint,
+                    )
+                    .size(px(12.)),
+                )
                 .child(icon("icons/folder.svg", pal.faint).size(px(15.)));
         } else {
-            pill = pill.child(icon("icons/note.svg", if active { pal.fg } else { pal.faint }).size(px(15.)).ml(px(18.)));
+            pill = pill.child(
+                icon("icons/note.svg", if active { pal.fg } else { pal.faint })
+                    .size(px(15.))
+                    .ml(px(18.)),
+            );
         }
         if editing && let Some(ed) = &self.editing {
             let state = ed.state.clone();
@@ -1310,9 +1567,12 @@ impl AbstractApp {
                         .invisible()
                         .group_hover("note-row", |s| s.visible())
                         .hover(|s| s.bg(rgb(pal.active)))
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            cx.stop_propagation();
-                            this.start_rename(path.clone(), kind, window, cx);
+                        .on_click(cx.listener({
+                            let path = path.clone();
+                            move |this, _, window, cx| {
+                                cx.stop_propagation();
+                                this.start_rename(path.clone(), kind, window, cx);
+                            }
                         }))
                         .child(icon("icons/pencil.svg", pal.dim).size(px(12.))),
                 )
@@ -1342,23 +1602,27 @@ impl AbstractApp {
 
     fn render_sidebar(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let rows = self.flat_rows();
-        let current = self.current.as_ref().map(|c| c.file.lock().unwrap().path.clone());
         let count = rows.len();
         let list = uniform_list(
             "notes",
             count,
             cx.processor(move |this, range: Range<usize>, _window, cx| {
                 let rows = this.flat_rows();
-                let current = this.current.as_ref().map(|c| c.file.lock().unwrap().path.clone());
+                let current = this
+                    .current
+                    .as_ref()
+                    .map(|c| c.file.lock().unwrap().path.clone());
                 range
                     .map(|ix| {
                         let row = &rows[ix.min(rows.len().saturating_sub(1))];
                         let pill = this.render_row(ix, row, current.as_deref(), cx);
-                        div()
-                            .h(px(32.))
-                            .px(px(8.))
-                            .pb(px(2.))
-                            .child(rise(pill, ("note-in", ix), 360, (ix.min(12) as f32) * 0.05, 4.))
+                        div().h(px(32.)).px(px(8.)).pb(px(2.)).child(rise(
+                            pill,
+                            ("note-in", ix),
+                            360,
+                            (ix.min(12) as f32) * 0.05,
+                            4.,
+                        ))
                     })
                     .collect()
             }),
@@ -1366,7 +1630,11 @@ impl AbstractApp {
         .flex_1()
         .min_h_0();
 
-        let (from, to) = if self.sidebar_open { (0., SIDEBAR_W) } else { (SIDEBAR_W, 0.) };
+        let (from, to) = if self.sidebar_open {
+            (0., SIDEBAR_W)
+        } else {
+            (SIDEBAR_W, 0.)
+        };
         let pal = cx.palette();
         let space_name = SharedString::from(spaces::name_of(&self.dir));
         let notes_n = Self::note_count(&self.tree);
@@ -1414,8 +1682,12 @@ impl AbstractApp {
                                         .when(self.spaces_open, |s| s.bg(rgb(pal.active)))
                                         .hover(|s| s.bg(rgb(pal.hover)))
                                         .active(|s| s.bg(rgb(pal.active)))
-                                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                                        .on_click(cx.listener(|this, _, _, cx| this.toggle_spaces(cx)))
+                                        .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                                            cx.stop_propagation()
+                                        })
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| this.toggle_spaces(cx)),
+                                        )
                                         .child(icon("icons/folder.svg", pal.fg).size(px(15.)))
                                         .child(
                                             div()
@@ -1428,14 +1700,31 @@ impl AbstractApp {
                                                 .child(space_name),
                                         )
                                         .child(icon("icons/chevrons.svg", pal.faint).size(px(14.)))
-                                        .when_some(self.mark(0, Anchor::TopLeft, point(px(0.), px(38.)), cx), |s, m| s.child(m)),
+                                        .when_some(
+                                            self.mark(
+                                                0,
+                                                Anchor::TopLeft,
+                                                point(px(0.), px(38.)),
+                                                cx,
+                                            ),
+                                            |s, m| s.child(m),
+                                        ),
+                                    &pal,
                                 ),
                             )
                             .child(
                                 self.ring(
                                     1,
-                                    icon_btn("new-folder", "icons/folder-add.svg", "Nova pasta".into(), false)
-                                        .on_click(cx.listener(|this, _, window, cx| this.new_folder(window, cx))),
+                                    icon_btn(
+                                        "new-folder",
+                                        "icons/folder-add.svg",
+                                        "Nova pasta".into(),
+                                        false,
+                                    )
+                                    .on_click(cx.listener(
+                                        |this, _, window, cx| this.new_folder(window, cx),
+                                    )),
+                                    &pal,
                                 )
                                 .when_some(
                                     self.mark(1, Anchor::TopRight, point(px(30.), px(38.)), cx),
@@ -1443,8 +1732,15 @@ impl AbstractApp {
                                 ),
                             )
                             .child(
-                                icon_btn("new", "icons/add.svg", "Nova nota (Ctrl+N)".into(), false)
-                                    .on_click(cx.listener(|this, _, window, cx| this.new_note(window, cx))),
+                                icon_btn(
+                                    "new",
+                                    "icons/add.svg",
+                                    "Nova nota (Ctrl+N)".into(),
+                                    false,
+                                )
+                                .on_click(
+                                    cx.listener(|this, _, window, cx| this.new_note(window, cx)),
+                                ),
                             ),
                     )
                     .child(
@@ -1462,7 +1758,9 @@ impl AbstractApp {
                             .child(notes_n.to_string()),
                     )
                     .child(list)
-                    .when(self.spaces_open, |col| col.child(self.render_spaces_menu(cx))),
+                    .when(self.spaces_open, |col| {
+                        col.child(self.render_spaces_menu(cx))
+                    }),
             );
         if self.sidebar_gen == 0 {
             return panel.w(px(to)).into_any_element();
@@ -1497,7 +1795,9 @@ impl AbstractApp {
                     .cursor_pointer()
                     .hover(|s| s.bg(rgb(pal.hover)))
                     .active(|s| s.bg(rgb(pal.active)))
-                    .on_click(cx.listener(move |this, _, window, cx| this.switch_space(ix, window, cx)))
+                    .on_click(
+                        cx.listener(move |this, _, window, cx| this.switch_space(ix, window, cx)),
+                    )
                     .child(
                         div()
                             .flex_1()
@@ -1521,7 +1821,9 @@ impl AbstractApp {
                                     .child(SharedString::from(path.display().to_string())),
                             ),
                     )
-                    .when(active, |row| row.child(icon("icons/check.svg", pal.fg).size(px(14.))))
+                    .when(active, |row| {
+                        row.child(icon("icons/check.svg", pal.fg).size(px(14.)))
+                    })
                     .when(!active && removable, |row| {
                         row.child(
                             div()
@@ -1610,7 +1912,8 @@ impl AbstractApp {
             SaveState::Failed => "Erro ao salvar".into(),
             SaveState::Saved => format!("{} palavras", self.words).into(),
         });
-        let theme_tip = SharedString::from(format!("Tema: {} (Ctrl+Shift+L)", self.theme_pref.label()));
+        let theme_tip =
+            SharedString::from(format!("Tema: {} (Ctrl+Shift+L)", self.theme_pref.label()));
 
         let toolbar = titlebar_drag(div().id("toolbar"))
             .h(px(48.))
@@ -1622,10 +1925,19 @@ impl AbstractApp {
             .child(
                 self.ring(
                     5,
-                    icon_btn("toggle-sidebar", "icons/sidebar.svg", "Barra lateral (Ctrl+\\)".into(), !self.sidebar_open)
-                        .on_click(cx.listener(|this, _, _, cx| this.toggle_sidebar(cx))),
+                    icon_btn(
+                        "toggle-sidebar",
+                        "icons/sidebar.svg",
+                        "Barra lateral (Ctrl+\\)".into(),
+                        !self.sidebar_open,
+                    )
+                    .on_click(cx.listener(|this, _, _, cx| this.toggle_sidebar(cx))),
+                    &pal,
                 )
-                .when_some(self.mark(5, Anchor::TopLeft, point(px(0.), px(38.)), cx), |s, m| s.child(m)),
+                .when_some(
+                    self.mark(5, Anchor::TopLeft, point(px(0.), px(38.)), cx),
+                    |s, m| s.child(m),
+                ),
             )
             .child(div().flex_1())
             .child(rise(
@@ -1637,10 +1949,18 @@ impl AbstractApp {
                         .text_right()
                         .px(px(8.))
                         .text_size(px(12.))
-                        .text_color(rgb(if self.save == SaveState::Failed { pal.fg } else { pal.faint }))
+                        .text_color(rgb(if self.save == SaveState::Failed {
+                            pal.fg
+                        } else {
+                            pal.faint
+                        }))
                         .child(status),
+                    &pal,
                 )
-                .when_some(self.mark(3, Anchor::TopRight, point(px(140.), px(34.)), cx), |s, m| s.child(m)),
+                .when_some(
+                    self.mark(3, Anchor::TopRight, point(px(140.), px(34.)), cx),
+                    |s, m| s.child(m),
+                ),
                 ("status", self.save as usize),
                 220,
                 0.,
@@ -1651,16 +1971,25 @@ impl AbstractApp {
                     4,
                     icon_btn("theme", self.theme_pref.icon(), theme_tip, false)
                         .on_click(cx.listener(|this, _, window, cx| this.cycle_theme(window, cx))),
+                    &pal,
                 )
-                .when_some(self.mark(4, Anchor::TopRight, point(px(30.), px(38.)), cx), |s, m| s.child(m)),
+                .when_some(
+                    self.mark(4, Anchor::TopRight, point(px(30.), px(38.)), cx),
+                    |s, m| s.child(m),
+                ),
             )
             .when(has_note, |bar| {
                 bar.child(
-                    icon_btn("delete", "icons/delete.svg", "Apagar nota (Ctrl+Shift+Backspace)".into(), false)
-                        .on_click(cx.listener(|this, _, window, cx| this.delete_note(window, cx))),
+                    icon_btn(
+                        "delete",
+                        "icons/delete.svg",
+                        "Apagar nota (Ctrl+Shift+Backspace)".into(),
+                        false,
+                    )
+                    .on_click(cx.listener(|this, _, window, cx| this.delete_note(window, cx))),
                 )
             })
-            .child(window_controls(window));
+            .child(window_controls(window, &pal));
 
         let body = if self.loading {
             div().flex_1().into_any_element()
@@ -1683,7 +2012,10 @@ impl AbstractApp {
                             0.,
                             10.,
                         ))
-                        .when_some(self.mark(2, Anchor::TopLeft, point(px(70.), px(70.)), cx), |s, m| s.child(m)),
+                        .when_some(
+                            self.mark(2, Anchor::TopLeft, point(px(70.), px(70.)), cx),
+                            |s, m| s.child(m),
+                        ),
                 )
                 .into_any_element()
         };
@@ -1721,7 +2053,9 @@ fn icon_btn(id: &'static str, path: &'static str, label: SharedString, on: bool)
         .id(id)
         .role(Role::Button)
         .aria_label(label)
-        .tooltip(move |window, cx| gpui_kit::component::tooltip::Tooltip::new(tip.clone()).build(window, cx))
+        .tooltip(move |window, cx| {
+            gpui_kit::component::tooltip::Tooltip::new(tip.clone()).build(window, cx)
+        })
         .size(px(30.))
         .flex_none()
         .flex()
@@ -1740,9 +2074,13 @@ fn icon_btn(id: &'static str, path: &'static str, label: SharedString, on: bool)
 
 /// Minimize / maximize-restore / close. Shown in both decoration modes: the
 /// app requests no compositor titlebar, so these are the only controls.
-fn window_controls(window: &Window) -> impl IntoElement {
+fn window_controls(window: &Window, pal: &Palette) -> impl IntoElement {
     let caps = window.window_controls();
     let maximized = window.is_maximized();
+    let line = pal.line;
+    let hover = pal.hover;
+    let dim = pal.dim;
+    let fg = pal.fg;
     div().map(|row| {
         row.flex()
             .items_center()
@@ -1750,11 +2088,18 @@ fn window_controls(window: &Window) -> impl IntoElement {
             .ml(px(6.))
             .pl(px(8.))
             .border_l_1()
-            .border_color(rgb(LINE))
+            .border_color(rgb(line))
             .when(caps.minimize, |r| {
                 r.child(
-                    win_btn("win-min", "icons/minimize.svg", "Minimizar", false)
-                        .on_click(|_, window, _| window.minimize_window()),
+                    win_btn(
+                        "win-min",
+                        "icons/minimize.svg",
+                        "Minimizar",
+                        false,
+                        dim,
+                        hover,
+                    )
+                    .on_click(|_, window, _| window.minimize_window()),
                 )
             })
             .when(caps.maximize, |r| {
@@ -1763,8 +2108,158 @@ fn window_controls(window: &Window) -> impl IntoElement {
                 } else {
                     ("icons/maximize.svg", "Maximizar")
                 };
-                r.child(win_btn("win-max", path, label, false).on_click(|_, window, _| window.zoom_window()))
+                r.child(
+                    win_btn("win-max", path, label, false, dim, hover)
+                        .on_click(|_, window, _| window.zoom_window()),
+                )
             })
-            .child(win_btn("win-close", "icons/close.svg", "Fechar", true).on_click(|_, window, _| window.remove_window()))
+            .child(
+                win_btn("win-close", "icons/close.svg", "Fechar", true, dim, hover)
+                    .on_click(|_, window, _| window.remove_window())
+                    .text_color(rgb(fg)),
+            )
     })
+}
+
+/// A window-chrome button: icon centered in a small square, red hover when
+/// `danger` (the close button).
+fn win_btn(
+    id: &'static str,
+    path: &'static str,
+    label: &'static str,
+    danger: bool,
+    dim: u32,
+    hover: u32,
+) -> Stateful<Div> {
+    div()
+        .id(id)
+        .role(Role::Button)
+        .aria_label(label)
+        .size(px(28.))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .rounded(px(6.))
+        .cursor_pointer()
+        .hover(move |s| {
+            if danger {
+                s.bg(rgb(0xd92d20)).text_color(rgb(0xffffff))
+            } else {
+                s.bg(rgb(hover))
+            }
+        })
+        .child(icon(path, dim).size(px(14.)))
+}
+
+/// Marks `el` as a window-drag region: primary-button drags move the window.
+fn titlebar_drag(el: Stateful<Div>) -> Stateful<Div> {
+    el.on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
+}
+
+fn bind_keys(cx: &mut App) {
+    let c = Some("AbstractApp");
+    cx.bind_keys([
+        KeyBinding::new("ctrl-n", NewNote, c),
+        KeyBinding::new("cmd-n", NewNote, c),
+        KeyBinding::new("ctrl-shift-n", NewFolder, c),
+        KeyBinding::new("ctrl-o", OpenSpace, c),
+        KeyBinding::new("cmd-o", OpenSpace, c),
+        KeyBinding::new("ctrl-s", SaveNow, c),
+        KeyBinding::new("cmd-s", SaveNow, c),
+        KeyBinding::new("ctrl-shift-l", CycleTheme, c),
+        KeyBinding::new("cmd-shift-l", CycleTheme, c),
+        KeyBinding::new("ctrl-\\", ToggleSidebar, c),
+        KeyBinding::new("cmd-\\", ToggleSidebar, c),
+        KeyBinding::new("ctrl-shift-backspace", DeleteNote, c),
+        KeyBinding::new("f2", RenameNote, c),
+        KeyBinding::new("f1", StartTour, c),
+    ]);
+}
+
+impl Render for AbstractApp {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let pal = cx.palette();
+        div()
+            .id("abstract-root")
+            .key_context("AbstractApp")
+            .size_full()
+            .flex()
+            .font_family(SANS)
+            .bg(rgb(pal.bg))
+            .text_color(rgb(pal.body))
+            .border_1()
+            .border_color(rgb(pal.frame_border))
+            .on_action(cx.listener(|this, _: &NewNote, window, cx| this.new_note(window, cx)))
+            .on_action(cx.listener(|this, _: &NewFolder, window, cx| this.new_folder(window, cx)))
+            .on_action(cx.listener(|this, _: &DeleteNote, window, cx| this.delete_note(window, cx)))
+            .on_action(
+                cx.listener(|this, _: &RenameNote, window, cx| this.rename_current(window, cx)),
+            )
+            .on_action(cx.listener(|this, _: &SaveNow, _, cx| this.save_now(cx)))
+            .on_action(cx.listener(|this, _: &CycleTheme, window, cx| this.cycle_theme(window, cx)))
+            .on_action(cx.listener(|this, _: &ToggleSidebar, _, cx| this.toggle_sidebar(cx)))
+            .on_action(cx.listener(|this, _: &OpenSpace, window, cx| this.open_space(window, cx)))
+            .on_action(cx.listener(|this, _: &ToggleSpaces, _, cx| this.toggle_spaces(cx)))
+            .on_action(cx.listener(|this, _: &StartTour, window, cx| this.start_tour(window, cx)))
+            .child(self.render_sidebar(cx))
+            .child(self.render_main(window, cx))
+    }
+}
+
+fn main() {
+    gpui_kit::application()
+        .with_assets(AppAssets)
+        .run(|cx: &mut App| {
+            gpui_kit::init(cx);
+            editor::bind_keys(cx);
+            tour::bind_keys(cx);
+            bind_keys(cx);
+
+            let settings = Settings::load();
+            let session = Session::load();
+            let window_bounds = session.window().map(|w| {
+                let b = Bounds {
+                    origin: point(px(w.x), px(w.y)),
+                    size: size(px(w.w), px(w.h)),
+                };
+                if w.maximized {
+                    WindowBounds::Maximized(b)
+                } else {
+                    WindowBounds::Windowed(b)
+                }
+            });
+            cx.spawn(async move |cx| {
+                cx.open_window(
+                    WindowOptions {
+                        window_bounds,
+                        titlebar: Some(TitlebarOptions {
+                            title: Some("abstract".into()),
+                            appears_transparent: true,
+                            traffic_light_position: None,
+                        }),
+                        window_decorations: Some(WindowDecorations::Client),
+                        app_owns_titlebar_drag: true,
+                        kind: WindowKind::Normal,
+                        is_movable: true,
+                        is_resizable: true,
+                        is_minimizable: true,
+                        focus: true,
+                        show: true,
+                        app_id: Some("abstract".into()),
+                        window_min_size: Some(size(px(560.), px(360.))),
+                        ..Default::default()
+                    },
+                    |window, cx| {
+                        theme::apply(settings.theme(), window.appearance(), cx);
+                        let view = cx.new(|cx| {
+                            AbstractApp::new(window, cx, settings.clone(), session.clone())
+                        });
+                        cx.new(|cx| Root::new(view, window, cx))
+                    },
+                )
+                .expect("failed to open abstract window");
+            })
+            .detach();
+        });
 }

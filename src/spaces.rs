@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::store::{xdg, write_atomic};
+use crate::store::{write_atomic, xdg};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Spaces {
@@ -37,7 +37,13 @@ impl Spaces {
         self.paths
             .iter()
             .enumerate()
-            .map(|(i, p)| format!("{}{}\n", if i == self.active { "* " } else { "" }, p.display()))
+            .map(|(i, p)| {
+                format!(
+                    "{}{}\n",
+                    if i == self.active { "* " } else { "" },
+                    p.display()
+                )
+            })
             .collect()
     }
 
@@ -76,7 +82,9 @@ pub fn name_of(path: &Path) -> String {
 }
 
 fn config_file() -> PathBuf {
-    xdg("XDG_CONFIG_HOME", ".config").join("abstract").join("spaces")
+    xdg("XDG_CONFIG_HOME", ".config")
+        .join("abstract")
+        .join("spaces")
 }
 
 /// Blocking. Loads the list, seeding `~/.local/share/abstract/Pessoal` on first
@@ -84,9 +92,16 @@ fn config_file() -> PathBuf {
 pub fn load() -> Spaces {
     let mut spaces = std::fs::read_to_string(config_file())
         .map(|s| Spaces::parse(&s))
-        .unwrap_or(Spaces { paths: Vec::new(), active: 0 });
+        .unwrap_or(Spaces {
+            paths: Vec::new(),
+            active: 0,
+        });
     if spaces.paths.is_empty() {
-        spaces.paths.push(xdg("XDG_DATA_HOME", ".local/share").join("abstract").join("Pessoal"));
+        spaces.paths.push(
+            xdg("XDG_DATA_HOME", ".local/share")
+                .join("abstract")
+                .join("Pessoal"),
+        );
     }
     if let Some(arg) = std::env::args_os().nth(1) {
         let p = PathBuf::from(arg);
@@ -100,7 +115,10 @@ pub fn save(spaces: &Spaces) {
     let file = config_file();
     let result = write_atomic(&file, spaces.serialize().as_bytes());
     if let Err(err) = result {
-        eprintln!("abstract: failed to save spaces to {}: {err}", file.display());
+        eprintln!(
+            "abstract: failed to save spaces to {}: {err}",
+            file.display()
+        );
     }
 }
 
@@ -111,7 +129,14 @@ mod tests {
     #[test]
     fn roundtrip_keeps_active_and_dedups() {
         let s = Spaces::parse("/a\n* /b\n/a\n\n/c\n");
-        assert_eq!(s.paths, vec![PathBuf::from("/a"), PathBuf::from("/b"), PathBuf::from("/c")]);
+        assert_eq!(
+            s.paths,
+            vec![
+                PathBuf::from("/a"),
+                PathBuf::from("/b"),
+                PathBuf::from("/c")
+            ]
+        );
         assert_eq!(s.current(), Path::new("/b"));
         assert_eq!(Spaces::parse(&s.serialize()), s);
     }
