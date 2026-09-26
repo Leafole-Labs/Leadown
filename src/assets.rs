@@ -7,6 +7,20 @@ use gpui_kit::*;
 use crate::theme::Palette;
 // ── Palette: pure monochrome, driven by `Palette` global ──────────────────
 pub(crate) const SANS: &str = "Noto Sans";
+pub(crate) const MONO: &str = "Noto Sans Mono";
+
+/// Bundled Noto fonts (OFL), registered at startup so Windows/Linux don't
+/// depend on system fonts.
+pub(crate) const FONTS: &[&[u8]] = &[
+    include_bytes!("../assets/fonts/NotoSans-Regular.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-Medium.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-SemiBold.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-Bold.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-Italic.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-SemiBoldItalic.ttf"),
+    include_bytes!("../assets/fonts/NotoSansMono-Regular.ttf"),
+    include_bytes!("../assets/fonts/NotoSansMono-Bold.ttf"),
+];
 /// Embedded Hugeicons (stroke-rounded, MIT). Anything else falls through to
 /// the component library's default icon set.
 const ICONS: [(&str, &[u8]); 17] = [

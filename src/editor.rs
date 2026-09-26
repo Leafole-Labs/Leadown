@@ -6,12 +6,11 @@ use std::ops::Range;
 
 use gpui_kit::*;
 
+use crate::assets::{MONO, SANS};
 use crate::buffer::Buffer;
 use crate::md::{self, Analysis, Analyzer, Kind};
 use crate::theme::Palette;
 
-const SANS: &str = "Noto Sans";
-const MONO: &str = "Noto Sans Mono";
 const MAX_COL: f32 = 700.;
 const PAD_X: f32 = 48.;
 const PAD_TOP: f32 = 28.;
