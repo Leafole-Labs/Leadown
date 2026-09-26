@@ -4,7 +4,7 @@ use std::time::Duration;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use crate::theme;
+use crate::theme::Palette;
 // ── Palette: pure monochrome, driven by `Palette` global ──────────────────
 pub(crate) const SANS: &str = "Noto Sans";
 /// Embedded Hugeicons (stroke-rounded, MIT). Anything else falls through to
@@ -133,6 +133,7 @@ pub(crate) fn icon_btn(
     path: &'static str,
     label: SharedString,
     on: bool,
+    pal: &Palette,
 ) -> Stateful<Div> {
     let tip = label.clone();
     div()
@@ -149,11 +150,7 @@ pub(crate) fn icon_btn(
         .justify_center()
         .rounded(px(6.))
         .cursor_pointer()
-        .map(|b| {
-            let pal = theme::DARK;
-            let _ = pal;
-            b
-        })
-        .when(on, |s| s.bg(rgb(0)))
-        .child(icon(path, 0))
+        .hover(move |s| s.bg(rgb(pal.hover)))
+        .when(on, move |s| s.bg(rgb(pal.active)))
+        .child(icon(path, pal.fg))
 }
