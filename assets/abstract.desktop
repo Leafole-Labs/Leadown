@@ -2,7 +2,7 @@
 Type=Application
 Name=abstract
 Comment=Minimal local-first markdown notes editor
-Exec=abstract-editor
+Exec=abstract
 Terminal=false
-Icon=abstract-editor
+Icon=abstract
 Categories=Office;TextEditor;

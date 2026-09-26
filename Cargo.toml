@@ -3,12 +3,16 @@ name = "abstract-editor"
 version = "0.1.0"
 edition = "2024"
 description = "Minimal local-first markdown notes editor, GPU-rendered with GPUI"
-repository = "https://github.com/horizzon3507/abstract-editor"
+repository = "https://github.com/fireflylabss/abstract"
 license = "Apache-2.0"
 rust-version = "1.97"
 keywords = ["markdown", "notes", "editor", "gpui"]
 categories = ["text-editors"]
 readme = "README.md"
+
+[[bin]]
+name = "abstract"
+path = "src/main.rs"
 
 [dependencies]
 gpui = { version = "=0.3.4", package = "gpui-pre" }
@@ -34,19 +38,19 @@ depends = "libxkbcommon0, libxkbcommon-x11-0, libwayland-client0, libxcb1, libfo
 section = "editors"
 assets = [
     [
-        "target/x86_64-unknown-linux-gnu/release/abstract-editor",
+        "target/x86_64-unknown-linux-gnu/release/abstract",
         "usr/bin/",
         "755",
     ],
-    ["README.md", "usr/share/doc/abstract-editor/README.md", "644"],
+    ["README.md", "usr/share/doc/abstract/README.md", "644"],
     [
-        "assets/abstract-editor.desktop",
-        "usr/share/applications/abstract-editor.desktop",
+        "assets/abstract.desktop",
+        "usr/share/applications/abstract.desktop",
         "644",
     ],
     [
-        "assets/abstract-editor.png",
-        "usr/share/icons/hicolor/512x512/apps/abstract-editor.png",
+        "assets/abstract.png",
+        "usr/share/icons/hicolor/512x512/apps/abstract.png",
         "644",
     ],
 ]

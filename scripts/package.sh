@@ -7,7 +7,7 @@ target="$1"
 artifact="$2"
 version="$3"
 
-bin="target/${target}/release/abstract-editor"
+bin="target/${target}/release/abstract"
 mkdir -p dist
 
 case "${target}" in
@@ -18,9 +18,9 @@ case "${target}" in
     stage="dist/pkg"
     rm -rf "${stage}"
     mkdir -p "${stage}"
-    cp "${bin}.exe" "${stage}/abstract-editor.exe"
+    cp "${bin}.exe" "${stage}/abstract.exe"
     cp README.md LICENSE "${stage}/"
-    (cd "${stage}" && 7z a -tzip "../abstract-editor-${version}-${artifact}.zip" . >/dev/null)
+    (cd "${stage}" && 7z a -tzip "../abstract-${version}-${artifact}.zip" . >/dev/null)
     rm -rf "${stage}"
     ls -lh dist/
     exit 0
@@ -36,9 +36,9 @@ esac
 stage="dist/pkg"
 rm -rf "${stage}"
 mkdir -p "${stage}"
-cp "${bin}" "${stage}/abstract-editor"
+cp "${bin}" "${stage}/abstract"
 cp README.md LICENSE "${stage}/"
-tar -C "${stage}" -czf "dist/abstract-editor-${version}-${artifact}.tar.gz" .
+tar -C "${stage}" -czf "dist/abstract-${version}-${artifact}.tar.gz" .
 rm -rf "${stage}"
 
 # macOS: bare .app bundle (ad-hoc signed), zipped
@@ -46,7 +46,7 @@ if [[ "${target}" == *-apple-darwin ]]; then
     app="dist/abstract.app"
     rm -rf "${app}"
     mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
-    cp "${bin}" "${app}/Contents/MacOS/abstract-editor"
+    cp "${bin}" "${app}/Contents/MacOS/abstract"
     cp assets/abstract.icns "${app}/Contents/Resources/abstract.icns"
     cat >"${app}/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -56,9 +56,9 @@ if [[ "${target}" == *-apple-darwin ]]; then
     <key>CFBundleName</key>
     <string>abstract</string>
     <key>CFBundleIdentifier</key>
-    <string>io.github.horizzon3507.abstract-editor</string>
+    <string>com.fireflylabs.abstract</string>
     <key>CFBundleExecutable</key>
-    <string>abstract-editor</string>
+    <string>abstract</string>
     <key>CFBundleVersion</key>
     <string>${version}</string>
     <key>CFBundleShortVersionString</key>
