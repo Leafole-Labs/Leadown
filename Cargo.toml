@@ -56,19 +56,19 @@ assets = [
 ]
 
 [package.metadata.generate-rpm]
-requires = [
-    "libxkbcommon",
-    "libxkbcommon-x11",
-    "libwayland-client",
-    "libxcb",
-    "fontconfig",
-]
 assets = [
     { source = "target/release/abstract", dest = "/usr/bin/abstract", mode = "755" },
     { source = "README.md", dest = "/usr/share/doc/abstract/README.md", mode = "644" },
     { source = "assets/abstract.desktop", dest = "/usr/share/applications/abstract.desktop", mode = "644" },
     { source = "assets/abstract.png", dest = "/usr/share/icons/hicolor/512x512/apps/abstract.png", mode = "644" },
 ]
+
+[package.metadata.generate-rpm.requires]
+libxkbcommon = "*"
+libxkbcommon-x11 = "*"
+libwayland-client = "*"
+libxcb = "*"
+fontconfig = "*"
 
 [profile.release]
 opt-level = 3
