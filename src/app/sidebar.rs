@@ -263,6 +263,7 @@ impl AbstractApp {
                                         .gap(px(8.))
                                         .rounded(px(6.))
                                         .cursor_pointer()
+                                        .occlude()
                                         .when(self.spaces_open, |s| s.bg(rgb(pal.active)))
                                         .hover(|s| s.bg(rgb(pal.hover)))
                                         .active(|s| s.bg(rgb(pal.active)))

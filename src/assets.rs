@@ -164,6 +164,7 @@ pub(crate) fn icon_btn(
         .justify_center()
         .rounded(px(6.))
         .cursor_pointer()
+        .occlude()
         .hover(move |s| s.bg(rgb(pal.hover)))
         .when(on, move |s| s.bg(rgb(pal.active)))
         .child(icon(path, pal.fg))
