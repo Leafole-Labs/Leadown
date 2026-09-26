@@ -129,8 +129,18 @@ jobs:
           path: dist/
       - name: Checksums
         run: sha256sum dist/* > dist/SHA256SUMS
+      - name: Check for existing release
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          generate_release_notes: true
+          generate_release_notes: ${{ steps.existing.outputs.found != 'true' }}
           draft: false
