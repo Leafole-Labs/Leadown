@@ -10,6 +10,11 @@ pub enum Lang {
     PtBr,
 }
 
+impl Lang {
+    /// Every implemented UI language, for cross-language matching.
+    pub const ALL: [Lang; 2] = [Lang::En, Lang::PtBr];
+}
+
 /// Stored in settings key `lang`: `system` | `en` | `pt-BR`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum LangPref {

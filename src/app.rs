@@ -51,15 +51,6 @@ fn title_of(text: &str) -> SharedString {
         .unwrap_or_else(|| SharedString::from(t(Key::Untitled)))
 }
 
-/// First meaningful line without the display fallback — keeps filenames
-/// independent of the UI language (the `Sem título` stem is canonical).
-fn raw_title(text: &str) -> &str {
-    text.lines()
-        .map(|l| l.trim().trim_start_matches('#').trim())
-        .find(|l| !l.is_empty())
-        .unwrap_or("")
-}
-
 fn stem_of(path: &Path) -> String {
     path.file_stem()
         .map(|s| s.to_string_lossy().into_owned())
@@ -125,7 +116,7 @@ fn write_note(
         let dir = from
             .parent()
             .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
-        target = vault::unique_path(&dir, &vault::stem_for_title(raw_title(text)), Some(&from));
+        target = vault::unique_path(&dir, &vault::stem_for_title(&title_of(text)), Some(&from));
     }
     let existed = from.exists();
     if target != from {
@@ -322,8 +313,8 @@ impl Render for AbstractApp {
 
 #[cfg(test)]
 mod tests {
-    use super::{NoteFile, raw_title, title_of, write_note};
-    use crate::i18n::{self, Key, t};
+    use super::{NoteFile, title_of, write_note};
+    use crate::i18n::{self, Key};
     use crate::vault;
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex};
@@ -393,11 +384,15 @@ mod tests {
     }
 
     #[test]
-    fn untitled_filename_does_not_depend_on_language() {
+    fn untitled_filename_follows_language() {
         // No `i18n::set` here — the global language races with parallel tests.
         assert_eq!(i18n::lookup(i18n::Lang::En, Key::Untitled), "Untitled");
-        assert_eq!(raw_title("   \n"), "");
-        assert_eq!(title_of(""), t(Key::Untitled));
+        // Stems from any language keep counting as placeholders.
+        assert!(vault::is_placeholder_stem("Untitled"));
+        assert!(vault::is_placeholder_stem("Untitled 2"));
+        assert!(vault::is_placeholder_stem("Sem título"));
+        assert!(!vault::is_placeholder_stem("Untitled x"));
+        // Tests run with the default language (PtBr) → canonical pt stem.
         let dir = std::env::temp_dir().join(format!(
             "abstract-app-test-untitled-lang-{}",
             std::process::id()
