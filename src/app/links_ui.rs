@@ -1,4 +1,12 @@
 use super::*;
+use crate::editor::{CompletionKey, CompletionMove};
+
+/// Open `[[…]]` completion: buffer range of the prefix plus the items shown.
+pub(super) struct Completion {
+    range: Range<usize>,
+    items: Vec<String>,
+    selected: usize,
+}
 
 impl AbstractApp {
     /// Ctrl/`Cmd`-click on `[[target]]`: open the note it names, creating it
@@ -19,5 +27,119 @@ impl AbstractApp {
         self.expand_to(&path);
         self.rescan_tree(cx);
         self.open_path(path, None, window, cx);
+    }
+
+    /// Recompute the `[[…]]` completion on every buffer change.
+    pub(crate) fn update_completion(&mut self, cx: &mut Context<Self>) {
+        let prefix = self.editor.read(cx).wiki_prefix();
+        match prefix {
+            Some((range, p)) => {
+                let items = crate::links::complete(&self.tree, &p);
+                if items.is_empty() {
+                    self.clear_completion(cx);
+                    return;
+                }
+                let keep = self
+                    .completion
+                    .as_ref()
+                    .filter(|c| c.range.start == range.start)
+                    .map(|c| c.selected.min(items.len() - 1))
+                    .unwrap_or(0);
+                self.completion = Some(Completion {
+                    range,
+                    items,
+                    selected: keep,
+                });
+                self.editor.update(cx, |ed, _| ed.set_completing(true));
+            }
+            None => self.clear_completion(cx),
+        }
+    }
+
+    pub(crate) fn clear_completion(&mut self, cx: &mut Context<Self>) {
+        if self.completion.take().is_some() {
+            self.editor.update(cx, |ed, _| ed.set_completing(false));
+            cx.notify();
+        }
+    }
+
+    fn accept_completion(&mut self, ix: usize, cx: &mut Context<Self>) {
+        let Some(c) = self.completion.take() else { return };
+        let Some(item) = c.items.get(ix).cloned() else {
+            return;
+        };
+        self.editor.update(cx, |ed, cx| {
+            ed.set_completing(false);
+            ed.complete_wiki(c.range, &item, cx);
+        });
+        cx.notify();
+    }
+
+    pub(crate) fn completion_key(&mut self, key: &CompletionKey, cx: &mut Context<Self>) {
+        match key.0 {
+            CompletionMove::Up | CompletionMove::Down => {
+                let Some(c) = &mut self.completion else { return };
+                let n = c.items.len();
+                c.selected = if matches!(key.0, CompletionMove::Down) {
+                    (c.selected + 1) % n
+                } else {
+                    (c.selected + n - 1) % n
+                };
+                cx.notify();
+            }
+            CompletionMove::Accept => {
+                let ix = self.completion.as_ref().map(|c| c.selected).unwrap_or(0);
+                self.accept_completion(ix, cx);
+            }
+            CompletionMove::Cancel => self.clear_completion(cx),
+        }
+    }
+
+    /// Popup under the caret listing completion stems; mounted inside the
+    /// (relative) editor column.
+    pub(crate) fn render_completion(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
+        let c = self.completion.as_ref()?;
+        let anchor = self.editor.read(cx).caret_anchor()?;
+        let pal = cx.palette();
+        let mut rows = div().flex().flex_col();
+        for (ix, item) in c.items.iter().enumerate() {
+            rows = rows.child(
+                div()
+                    .id(("cmpl", ix))
+                    .px(px(8.))
+                    .h(px(22.))
+                    .flex()
+                    .items_center()
+                    .truncate()
+                    .text_size(px(12.))
+                    .text_color(rgb(if ix == c.selected { pal.fg } else { pal.body }))
+                    .rounded(px(4.))
+                    .cursor_pointer()
+                    .when(ix == c.selected, |s| s.bg(rgb(pal.active)))
+                    .when(ix != c.selected, |s| s.hover(|s| s.bg(rgb(pal.hover))))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.accept_completion(ix, cx)
+                    }))
+                    .child(item.clone()),
+            );
+        }
+        Some(
+            div()
+                .id("wiki-completion")
+                .absolute()
+                .left(px(anchor.x.max(8.)))
+                .top(px(anchor.y + 4.))
+                .w(px(240.))
+                .max_h(px(180.))
+                .overflow_hidden()
+                .bg(rgb(pal.menu_bg))
+                .border_1()
+                .border_color(rgb(pal.menu_border))
+                .rounded(px(6.))
+                .shadow_lg()
+                .occlude()
+                .p(px(3.))
+                .child(rows),
+        )
     }
 }

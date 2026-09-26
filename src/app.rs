@@ -20,7 +20,7 @@ use gpui_kit::*;
 
 use crate::assets::{SANS, ease_out_quint, icon, icon_btn, rise};
 use crate::chrome::{session_window, titlebar_drag, window_controls};
-use crate::editor::{Changed, LiveEditor, OpenLink};
+use crate::editor::{Changed, CompletionKey, LiveEditor, OpenLink};
 use crate::keymap::*;
 use crate::spaces::{self, Spaces};
 use crate::store::{self, Session, SessionNote, SessionWindow, Settings};
@@ -167,6 +167,7 @@ pub(crate) struct AbstractApp {
     _io_task: Option<Task<()>>,
     _bounds_task: Option<Task<()>>,
     search: Option<search_ui::SearchPalette>,
+    completion: Option<links_ui::Completion>,
     _watcher: Option<SpaceWatcher>,
     _watch_task: Option<Task<()>>,
     _subs: Vec<Subscription>,
@@ -183,7 +184,11 @@ impl AbstractApp {
             let text = editor.read(cx).text();
             this.words = text.split_whitespace().count();
             this.schedule_save(cx);
+            this.update_completion(cx);
             cx.notify();
+        });
+        let on_completion = cx.subscribe(&editor, |this: &mut Self, _, ev: &CompletionKey, cx| {
+            this.completion_key(ev, cx);
         });
         let on_link = cx.subscribe(&editor, |_this: &mut Self, _, ev: &OpenLink, cx| {
             let target = ev.0.clone();
@@ -241,10 +246,12 @@ impl AbstractApp {
             _io_task: None,
             _bounds_task: None,
             search: None,
+            completion: None,
             _watcher: None,
             _watch_task: None,
             _subs: vec![
                 on_change,
+                on_completion,
                 on_link,
                 on_quit,
                 on_bounds,
