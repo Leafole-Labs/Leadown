@@ -3,6 +3,10 @@ use super::*;
 impl AbstractApp {
     /// Re-read the whole folder tree off-thread.
     pub(crate) fn rescan_tree(&mut self, cx: &mut Context<Self>) {
+        // `dir` is empty until `enter_space` runs on window activation.
+        if self.dir.as_os_str().is_empty() {
+            return;
+        }
         let dir = self.dir.clone();
         cx.spawn(async move |this, cx| {
             let scanned = cx
