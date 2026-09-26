@@ -114,7 +114,16 @@ pub(crate) fn win_btn(
 /// Marks `el` as a window-drag region: primary-button drags move the window.
 /// The control area resolves the drag on Windows, where `start_window_move`
 /// is a no-op; the mouse-down handler covers the other platforms.
+///
+/// Only wrap empty filler elements: Windows hit-tests the control area over
+/// the whole element, so children under it would never receive clicks.
 pub(crate) fn titlebar_drag(el: Stateful<Div>) -> Stateful<Div> {
     el.window_control_area(WindowControlArea::Drag)
         .on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
+}
+
+/// Drag handler for headers whose children fill them: `start_window_move`
+/// on macOS/Linux; a no-op on Windows, where drags need `titlebar_drag`.
+pub(crate) fn drag_fallback(el: Stateful<Div>) -> Stateful<Div> {
+    el.on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
 }

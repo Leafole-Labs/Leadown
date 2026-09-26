@@ -21,7 +21,7 @@ impl AbstractApp {
             )],
         ));
 
-        let toolbar = titlebar_drag(div().id("toolbar"))
+        let toolbar = drag_fallback(div().id("toolbar"))
             .h(px(48.))
             .flex_none()
             .flex()
@@ -55,7 +55,7 @@ impl AbstractApp {
                 )
                 .on_click(cx.listener(|this, _, window, cx| this.open_search(window, cx))),
             )
-            .child(div().flex_1())
+            .child(titlebar_drag(div().id("toolbar-drag")).flex_1().h_full())
             .child(rise(
                 self.ring(
                     3,
