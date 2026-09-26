@@ -20,6 +20,7 @@ gpui-kit-assets = "=0.6.1"
 gpui_platform = { version = "=0.3.4", package = "gpui-pre-platform", default-features = false, features = ["wayland", "x11"] }
 tree-sitter = "=0.26.13"
 notify = "8"
+sys-locale = "0.3"
 futures = "0.3"
 tree-sitter-md = "=0.5.3"
 trash = "5"

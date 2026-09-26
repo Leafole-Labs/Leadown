@@ -20,7 +20,7 @@ impl AbstractApp {
         let path = vault::unique_path(&self.dir, &stem, None);
         if let Err(err) = store::write_atomic(&path, format!("# {target}\n\n").as_bytes()) {
             eprintln!("abstract: cannot create linked note: {err}");
-            self.notice = Some("Não foi possível criar a nota".into());
+            self.notice = Some(t(Key::CreateNoteFailed).into());
             cx.notify();
             return;
         }
@@ -147,7 +147,7 @@ impl AbstractApp {
                 .text_size(px(11.))
                 .font_weight(FontWeight::MEDIUM)
                 .text_color(rgb(pal.faint))
-                .child("Referenciada por"),
+                .child(t(Key::ReferencedBy)),
         );
         for (ix, (path, title)) in self.backlinks.iter().enumerate() {
             let p = path.clone();

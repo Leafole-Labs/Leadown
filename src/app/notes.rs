@@ -175,7 +175,7 @@ impl AbstractApp {
                 .await;
             this.update(cx, |this, cx| {
                 if !ok {
-                    this.notice = Some("Não foi possível mover para a Lixeira".into());
+                    this.notice = Some(t(Key::TrashFailed).into());
                 }
                 this.rescan_tree(cx);
             })
@@ -259,9 +259,9 @@ impl AbstractApp {
             .unwrap_or_default();
         let prompt = window.prompt(
             PromptLevel::Warning,
-            &format!("Mover a pasta “{name}” para a Lixeira?"),
-            Some("As notas dentro dela também vão."),
-            &["Mover para a Lixeira", "Cancelar"],
+            &tf(Key::TrashFolderPrompt, &[("name", &name)]),
+            Some(t(Key::TrashFolderHint)),
+            &[t(Key::MoveToTrash), t(Key::Cancel)],
             cx,
         );
         cx.spawn_in(window, async move |this, cx| {
@@ -282,7 +282,7 @@ impl AbstractApp {
                     && cur.path().starts_with(&path)
                 {
                     guard(&cur.file).mtime = None;
-                    this.notice = Some("Arquivo removido fora do app".into());
+                    this.notice = Some(t(Key::FileRemovedOutside).into());
                 }
                 this.trash_path(path.clone(), cx);
             })

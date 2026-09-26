@@ -21,6 +21,7 @@ use gpui_kit::*;
 use crate::assets::{SANS, ease_out_quint, icon, icon_btn, rise};
 use crate::chrome::{session_window, titlebar_drag, window_controls};
 use crate::editor::{Changed, CompletionKey, LiveEditor, OpenLink};
+use crate::i18n::{self, Key, t, tf};
 use crate::keymap::*;
 use crate::spaces::{self, Spaces};
 use crate::store::{self, Session, SessionNote, SessionWindow, Settings};
@@ -47,7 +48,16 @@ fn title_of(text: &str) -> SharedString {
         .map(|l| l.trim().trim_start_matches('#').trim())
         .find(|l| !l.is_empty())
         .map(|l| SharedString::from(l.chars().take(80).collect::<String>()))
-        .unwrap_or_else(|| SharedString::new_static("Sem título"))
+        .unwrap_or_else(|| SharedString::from(t(Key::Untitled)))
+}
+
+/// First meaningful line without the display fallback — keeps filenames
+/// independent of the UI language (the `Sem título` stem is canonical).
+fn raw_title(text: &str) -> &str {
+    text.lines()
+        .map(|l| l.trim().trim_start_matches('#').trim())
+        .find(|l| !l.is_empty())
+        .unwrap_or("")
 }
 
 fn stem_of(path: &Path) -> String {
@@ -115,7 +125,7 @@ fn write_note(
         let dir = from
             .parent()
             .map_or_else(|| PathBuf::from("."), Path::to_path_buf);
-        target = vault::unique_path(&dir, &vault::stem_for_title(&title_of(text)), Some(&from));
+        target = vault::unique_path(&dir, &vault::stem_for_title(raw_title(text)), Some(&from));
     }
     let existed = from.exists();
     if target != from {
@@ -378,6 +388,24 @@ mod tests {
         let lock = Arc::new(Mutex::new(()));
         assert!(!write_note(&lock, &file, true, "# Hello").unwrap());
         assert!(!dir.join("gone.md").exists());
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn untitled_filename_does_not_depend_on_language() {
+        let dir = std::env::temp_dir().join(format!(
+            "abstract-app-test-untitled-lang-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = note(dir.join("x.md"));
+        let lock = Arc::new(Mutex::new(()));
+        crate::i18n::set(crate::i18n::Lang::En);
+        // Display falls back to "Untitled" but the file keeps the canonical stem.
+        assert_eq!(title_of(""), "Untitled");
+        assert!(write_note(&lock, &file, true, "   \n").unwrap());
+        assert_eq!(file.lock().unwrap().path, dir.join("Sem título.md"));
+        crate::i18n::set(crate::i18n::Lang::PtBr);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

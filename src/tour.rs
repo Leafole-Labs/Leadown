@@ -6,6 +6,7 @@ use gpui_kit::*;
 
 use crate::app::AbstractApp;
 use crate::assets::rise;
+use crate::i18n::{Key, t, tf};
 use crate::theme::PaletteAccess;
 
 actions!(abstract_tour, [TourNext, TourBack, TourSkip]);
@@ -21,34 +22,34 @@ pub fn bind_keys(cx: &mut App) {
 }
 
 pub struct Step {
-    pub title: &'static str,
-    pub body: &'static str,
+    pub title: Key,
+    pub body: Key,
 }
 
 pub const STEPS: &[Step] = &[
     Step {
-        title: "Espaços são pastas reais",
-        body: "Cada espaço é uma pasta no seu disco. Troque de espaço ou abra outra pasta aqui (Ctrl+O).",
+        title: Key::Tour1Title,
+        body: Key::Tour1Body,
     },
     Step {
-        title: "Notas e pastas",
-        body: "Crie notas com Ctrl+N e organize em pastas. Tudo vira arquivo .md comum.",
+        title: Key::Tour2Title,
+        body: Key::Tour2Body,
     },
     Step {
-        title: "Escreva em Markdown",
-        body: "A primeira linha vira o título — e o nome do arquivo.",
+        title: Key::Tour3Title,
+        body: Key::Tour3Body,
     },
     Step {
-        title: "Salvamento automático",
-        body: "Tudo é salvo sozinho. Ctrl+S salva na hora; apagar envia para a Lixeira.",
+        title: Key::Tour4Title,
+        body: Key::Tour4Body,
     },
     Step {
-        title: "Claro, escuro ou sistema",
-        body: "Alterne o tema com Ctrl+Shift+L.",
+        title: Key::Tour5Title,
+        body: Key::Tour5Body,
     },
     Step {
-        title: "Modo foco",
-        body: "Esconda a barra lateral com Ctrl+\\. F1 reabre este tour.",
+        title: Key::Tour6Title,
+        body: Key::Tour6Body,
     },
 ];
 
@@ -79,7 +80,14 @@ pub fn bubble(step: usize, focus: FocusHandle, cx: &mut Context<AbstractApp>) ->
         .key_context("Tour")
         .track_focus(&focus)
         .role(Role::Dialog)
-        .aria_label(format!("Passo {} de {n}: {}", step + 1, s.title))
+        .aria_label(tf(
+            Key::TourStepAria,
+            &[
+                ("step", &(step + 1).to_string()),
+                ("n", &n.to_string()),
+                ("title", t(s.title)),
+            ],
+        ))
         .w(px(280.))
         .bg(rgb(p.menu_bg))
         .border_1()
@@ -99,14 +107,14 @@ pub fn bubble(step: usize, focus: FocusHandle, cx: &mut Context<AbstractApp>) ->
                 .text_size(px(13.))
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(rgb(p.fg))
-                .child(s.title),
+                .child(t(s.title)),
         )
         .child(
             div()
                 .text_size(px(12.5))
                 .line_height(px(18.))
                 .text_color(rgb(p.dim))
-                .child(s.body),
+                .child(t(s.body)),
         )
         .child(
             div()
@@ -114,22 +122,20 @@ pub fn bubble(step: usize, focus: FocusHandle, cx: &mut Context<AbstractApp>) ->
                 .items_center()
                 .gap(px(4.))
                 .pt(px(4.))
-                .child(
-                    div()
-                        .text_size(px(11.))
-                        .text_color(rgb(p.faint))
-                        .child(format!("{} de {n}", step + 1)),
-                )
+                .child(div().text_size(px(11.)).text_color(rgb(p.faint)).child(tf(
+                    Key::TourStepOf,
+                    &[("step", &(step + 1).to_string()), ("n", &n.to_string())],
+                )))
                 .child(div().flex_1())
                 .child(
-                    btn("tour-skip", "Pular")
+                    btn("tour-skip", t(Key::TourSkip))
                         .text_color(rgb(p.dim))
                         .hover(|s| s.bg(rgb(p.hover)))
                         .on_click(cx.listener(|this, _, window, cx| this.tour_skip(window, cx))),
                 )
                 .when(step > 0, |row| {
                     row.child(
-                        btn("tour-back", "Voltar")
+                        btn("tour-back", t(Key::TourBack))
                             .text_color(rgb(p.dim))
                             .hover(|s| s.bg(rgb(p.hover)))
                             .on_click(
@@ -138,12 +144,19 @@ pub fn bubble(step: usize, focus: FocusHandle, cx: &mut Context<AbstractApp>) ->
                     )
                 })
                 .child(
-                    btn("tour-next", if last { "Concluir" } else { "Próximo" })
-                        .bg(rgb(p.fg))
-                        .text_color(rgb(p.bg))
-                        .font_weight(FontWeight::MEDIUM)
-                        .hover(|s| s.opacity(0.85))
-                        .on_click(cx.listener(|this, _, window, cx| this.tour_next(window, cx))),
+                    btn(
+                        "tour-next",
+                        if last {
+                            t(Key::TourDone)
+                        } else {
+                            t(Key::TourNext)
+                        },
+                    )
+                    .bg(rgb(p.fg))
+                    .text_color(rgb(p.bg))
+                    .font_weight(FontWeight::MEDIUM)
+                    .hover(|s| s.opacity(0.85))
+                    .on_click(cx.listener(|this, _, window, cx| this.tour_next(window, cx))),
                 ),
         )
 }

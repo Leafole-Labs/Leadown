@@ -5,12 +5,21 @@ impl AbstractApp {
         let pal = cx.palette();
         let has_note = self.current.is_some();
         let status: SharedString = self.notice.clone().unwrap_or_else(|| match self.save {
-            SaveState::Pending => "Salvando…".into(),
-            SaveState::Failed => "Erro ao salvar".into(),
-            SaveState::Saved => format!("{} palavras", self.words).into(),
+            SaveState::Pending => t(Key::Saving).into(),
+            SaveState::Failed => t(Key::SaveFailed).into(),
+            SaveState::Saved => tf(Key::Words, &[("n", &self.words.to_string())]).into(),
         });
-        let theme_tip =
-            SharedString::from(format!("Tema: {} ({MOD}+Shift+L)", self.theme_pref.label()));
+        let theme_tip = SharedString::from(tf(
+            Key::Theme,
+            &[(
+                "name",
+                match self.theme_pref {
+                    ThemePref::System => t(Key::ThemeSystem),
+                    ThemePref::Light => t(Key::ThemeLight),
+                    ThemePref::Dark => t(Key::ThemeDark),
+                },
+            )],
+        ));
 
         let toolbar = titlebar_drag(div().id("toolbar"))
             .h(px(48.))
@@ -25,7 +34,7 @@ impl AbstractApp {
                     icon_btn(
                         "toggle-sidebar",
                         "icons/sidebar.svg",
-                        format!("Barra lateral ({MOD}+\\)").into(),
+                        tf(Key::Sidebar, &[]).into(),
                         !self.sidebar_open,
                     )
                     .on_click(cx.listener(|this, _, _, cx| this.toggle_sidebar(cx))),
@@ -40,7 +49,7 @@ impl AbstractApp {
                 icon_btn(
                     "search",
                     "icons/search.svg",
-                    format!("Buscar notas ({MOD}+P)").into(),
+                    tf(Key::Search, &[]).into(),
                     false,
                 )
                 .on_click(cx.listener(|this, _, window, cx| this.open_search(window, cx))),
@@ -89,7 +98,7 @@ impl AbstractApp {
                     icon_btn(
                         "delete",
                         "icons/delete.svg",
-                        format!("Apagar nota ({MOD}+Shift+Backspace)").into(),
+                        tf(Key::DeleteNote, &[]).into(),
                         false,
                     )
                     .on_click(cx.listener(|this, _, window, cx| this.delete_note(window, cx))),

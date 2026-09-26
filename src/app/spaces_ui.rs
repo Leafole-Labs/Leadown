@@ -10,6 +10,28 @@ impl AbstractApp {
         cx.notify();
     }
 
+    /// Idioma row in the spaces menu: Sistema → English → Português (Brasil).
+    pub(crate) fn cycle_lang(&mut self, cx: &mut Context<Self>) {
+        let next = self.settings.lang().next();
+        self.settings.set_lang(next);
+        i18n::set(match next {
+            i18n::LangPref::System => i18n::detect(),
+            i18n::LangPref::En => i18n::Lang::En,
+            i18n::LangPref::PtBr => i18n::Lang::PtBr,
+        });
+        let settings = self.settings.clone();
+        cx.background_spawn(async move { settings.save() }).detach();
+        cx.notify();
+    }
+
+    pub(crate) fn lang_label(&self) -> &'static str {
+        match self.settings.lang() {
+            i18n::LangPref::System => t(Key::LangSystem),
+            i18n::LangPref::En => "English",
+            i18n::LangPref::PtBr => "Português (Brasil)",
+        }
+    }
+
     pub(crate) fn cycle_theme(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.theme_pref = self.theme_pref.next();
         theme::apply(self.theme_pref, window.appearance(), cx);
@@ -117,7 +139,7 @@ impl AbstractApp {
             files: false,
             directories: true,
             multiple: false,
-            prompt: Some("Abrir como espaço".into()),
+            prompt: Some(t(Key::OpenAsSpace).into()),
         });
         cx.spawn_in(window, async move |this, cx| {
             let Ok(Ok(Some(paths))) = picked.await else {
@@ -204,7 +226,7 @@ impl AbstractApp {
                             div()
                                 .id(("space-remove", ix))
                                 .role(Role::Button)
-                                .aria_label("Remover da lista (os arquivos ficam)")
+                                .aria_label(t(Key::RemoveFromList))
                                 .size(px(22.))
                                 .flex()
                                 .items_center()
@@ -247,7 +269,7 @@ impl AbstractApp {
                     .text_size(px(11.))
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(rgb(pal.faint))
-                    .child("ESPAÇOS"),
+                    .child(t(Key::Spaces)),
             )
             .child(rows)
             .child(div().h(px(1.)).bg(rgb(pal.line)))
@@ -269,7 +291,35 @@ impl AbstractApp {
                         .active(|s| s.bg(rgb(pal.active)))
                         .on_click(cx.listener(|this, _, window, cx| this.open_space(window, cx)))
                         .child(icon("icons/folder-add.svg", pal.dim).size(px(15.)))
-                        .child("Abrir pasta como espaço…"),
+                        .child(t(Key::OpenFolderAsSpace)),
+                ),
+            )
+            .child(
+                div().p(px(4.)).child(
+                    div()
+                        .id("lang-cycle")
+                        .role(Role::MenuItem)
+                        .h(px(32.))
+                        .px(px(8.))
+                        .flex()
+                        .items_center()
+                        .gap(px(8.))
+                        .rounded(px(6.))
+                        .cursor_pointer()
+                        .text_size(px(13.))
+                        .text_color(rgb(pal.body))
+                        .hover(|s| s.bg(rgb(pal.hover)))
+                        .active(|s| s.bg(rgb(pal.active)))
+                        .on_click(cx.listener(|this, _, _, cx| this.cycle_lang(cx)))
+                        .child(icon("icons/globe.svg", pal.dim).size(px(15.)))
+                        .child(t(Key::Language))
+                        .child(div().flex_1())
+                        .child(
+                            div()
+                                .text_size(px(11.))
+                                .text_color(rgb(pal.faint))
+                                .child(self.lang_label()),
+                        ),
                 ),
             );
         menu.with_animation(

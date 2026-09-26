@@ -15,7 +15,6 @@ const MONO: &str = "Noto Sans Mono";
 const MAX_COL: f32 = 700.;
 const PAD_X: f32 = 48.;
 const PAD_TOP: f32 = 28.;
-const PLACEHOLDER: &str = "Comece a escrever…";
 
 actions!(
     live_editor,
@@ -534,7 +533,7 @@ impl Render for LiveEditor {
             .key_context("LiveEditor")
             .track_focus(&self.focus)
             .role(Role::MultilineTextInput)
-            .aria_label("Editor Markdown")
+            .aria_label(crate::i18n::t(crate::i18n::Key::EditorAria))
             .size_full()
             .cursor_text()
             .on_action(cx.listener(|this, _: &Backspace, _, cx| {
@@ -924,8 +923,9 @@ impl Element for EditorElement {
             display.clear();
             runs.clear();
             let segs = if text.is_empty() && ix == 0 {
-                display.push_str(PLACEHOLDER);
-                runs.push(run(&pal, *kind, md::MARK, PLACEHOLDER.len()));
+                let placeholder = crate::i18n::t(crate::i18n::Key::EditorPlaceholder);
+                display.push_str(placeholder);
+                runs.push(run(&pal, *kind, md::MARK, placeholder.len()));
                 std::iter::once(0..0).collect()
             } else {
                 let segs = a.visible(buf.clone(), &reveal);

@@ -233,7 +233,7 @@ impl AbstractApp {
                     // Vanished: keep the buffer; the next edit recreates it.
                     None if recorded.is_some() => {
                         guard(&file).mtime = None;
-                        this.notice = Some("Arquivo removido fora do app".into());
+                        this.notice = Some(t(Key::FileRemovedOutside).into());
                         cx.notify();
                     }
                     Some(m) if recorded != Some(m) => {

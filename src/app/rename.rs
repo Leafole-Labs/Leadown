@@ -72,7 +72,7 @@ impl AbstractApp {
             dir,
             NodeKind::Folder,
             true,
-            "Nova pasta".to_string(),
+            t(Key::NewFolder).to_string(),
             window,
             cx,
         );
@@ -105,7 +105,7 @@ impl AbstractApp {
 
     /// Keep the input open and complain.
     pub(crate) fn edit_conflict(&mut self, ed: RenameEdit, cx: &mut Context<Self>) {
-        self.notice = Some("Já existe um item com esse nome".into());
+        self.notice = Some(t(Key::NameConflict).into());
         self.editing = Some(ed);
         self.focus_edit(cx);
         cx.notify();
@@ -250,7 +250,7 @@ impl AbstractApp {
                 if ok {
                     this.remap_prefix(&old, &new, cx);
                 } else {
-                    this.notice = Some("Não foi possível renomear".into());
+                    this.notice = Some(t(Key::RenameFailed).into());
                 }
                 this.rescan_tree(cx);
             })
@@ -303,7 +303,7 @@ impl AbstractApp {
                     this.remap_prefix(&old, &new, cx);
                 } else {
                     eprintln!("abstract: failed to rename {}", old.display());
-                    this.notice = Some("Não foi possível renomear".into());
+                    this.notice = Some(t(Key::RenameFailed).into());
                 }
                 this.rescan_tree(cx);
             })

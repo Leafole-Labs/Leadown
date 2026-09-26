@@ -9,7 +9,7 @@ use crate::theme;
 pub(crate) const SANS: &str = "Noto Sans";
 /// Embedded Hugeicons (stroke-rounded, MIT). Anything else falls through to
 /// the component library's default icon set.
-const ICONS: [(&str, &[u8]); 16] = [
+const ICONS: [(&str, &[u8]); 17] = [
     (
         "icons/add.svg",
         include_bytes!("../assets/icons/add-01.svg"),
@@ -57,6 +57,10 @@ const ICONS: [(&str, &[u8]); 16] = [
     (
         "icons/pencil.svg",
         include_bytes!("../assets/icons/pencil.svg"),
+    ),
+    (
+        "icons/globe.svg",
+        include_bytes!("../assets/icons/globe.svg"),
     ),
     ("icons/link.svg", include_bytes!("../assets/icons/link.svg")),
     (

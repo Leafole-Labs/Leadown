@@ -127,14 +127,6 @@ impl ThemePref {
         }
     }
 
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::System => "Sistema",
-            Self::Light => "Claro",
-            Self::Dark => "Escuro",
-        }
-    }
-
     pub fn icon(&self) -> &'static str {
         match self {
             Self::System => "icons/monitor.svg",

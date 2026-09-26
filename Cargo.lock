@@ -15,6 +15,7 @@ dependencies = [
  "gpui-pre",
  "gpui-pre-platform",
  "notify 8.2.0",
+ "sys-locale",
  "trash",
  "tree-sitter",
  "tree-sitter-md",

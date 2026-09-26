@@ -34,7 +34,7 @@ impl AbstractApp {
         {
             let ix = insert(&mut rows, parent);
             rows[ix].path = p.clone();
-            rows[ix].name = "Sem título".into();
+            rows[ix].name = t(Key::Untitled).into();
         }
         rows
     }
@@ -144,7 +144,7 @@ impl AbstractApp {
                     div()
                         .id(("row-rename", ix))
                         .role(Role::Button)
-                        .aria_label("Renomear")
+                        .aria_label(t(Key::Rename))
                         .size(px(20.))
                         .flex_none()
                         .flex()
@@ -167,7 +167,7 @@ impl AbstractApp {
                     div()
                         .id(("row-delete", ix))
                         .role(Role::Button)
-                        .aria_label("Mover para a Lixeira")
+                        .aria_label(t(Key::MoveToTrash))
                         .size(px(20.))
                         .flex_none()
                         .flex()
@@ -253,7 +253,7 @@ impl AbstractApp {
                                     div()
                                         .id("space-switcher")
                                         .role(Role::Button)
-                                        .aria_label(format!("Trocar de espaço ({MOD}+O)").as_str())
+                                        .aria_label(tf(Key::SwitchSpace, &[]).as_str())
                                         .flex_1()
                                         .min_w_0()
                                         .h(px(30.))
@@ -302,7 +302,7 @@ impl AbstractApp {
                                     icon_btn(
                                         "new-folder",
                                         "icons/folder-add.svg",
-                                        "Nova pasta".into(),
+                                        t(Key::NewFolder).into(),
                                         false,
                                     )
                                     .on_click(cx.listener(
@@ -319,7 +319,7 @@ impl AbstractApp {
                                 icon_btn(
                                     "new",
                                     "icons/add.svg",
-                                    format!("Nova nota ({MOD}+N)").into(),
+                                    tf(Key::NewNote, &[]).into(),
                                     false,
                                 )
                                 .on_click(
@@ -338,7 +338,7 @@ impl AbstractApp {
                             .text_size(px(11.))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(rgb(pal.faint))
-                            .child("NOTAS")
+                            .child(t(Key::Notes))
                             .child(notes_n.to_string()),
                     )
                     .child(list)

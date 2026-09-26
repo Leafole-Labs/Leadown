@@ -14,7 +14,7 @@ impl AbstractApp {
         if self.search.is_some() {
             return;
         }
-        let state = cx.new(|cx| InputState::new(window, cx).placeholder("Buscar notas…"));
+        let state = cx.new(|cx| InputState::new(window, cx).placeholder(t(Key::SearchPlaceholder)));
         let sub = cx.subscribe(&state, |this: &mut Self, _, ev: &InputEvent, cx| match ev {
             InputEvent::Change => this.search_changed(cx),
             InputEvent::PressEnter { .. } => {
@@ -183,7 +183,7 @@ impl AbstractApp {
                     .py(px(8.))
                     .text_size(px(12.))
                     .text_color(rgb(pal.faint))
-                    .child("Nenhuma nota encontrada"),
+                    .child(t(Key::NoNotesFound)),
             );
         }
         div()

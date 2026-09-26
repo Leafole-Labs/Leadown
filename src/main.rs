@@ -4,6 +4,7 @@ mod buffer;
 mod chrome;
 mod code;
 mod editor;
+mod i18n;
 mod keymap;
 mod links;
 mod md;
@@ -35,6 +36,11 @@ fn main() {
             cx.set_menus([Menu::new("abstract").items([MenuItem::action("Quit abstract", Quit)])]);
 
             let settings = Settings::load();
+            i18n::set(match settings.lang() {
+                i18n::LangPref::System => i18n::detect(),
+                i18n::LangPref::En => i18n::Lang::En,
+                i18n::LangPref::PtBr => i18n::Lang::PtBr,
+            });
             let session = Session::load();
             let window_bounds = session.window().map(|w| {
                 let b = Bounds {

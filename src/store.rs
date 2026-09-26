@@ -5,6 +5,7 @@
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
+use crate::i18n::LangPref;
 use crate::theme::ThemePref;
 
 pub(crate) fn xdg(var: &str, fallback: &str) -> PathBuf {
@@ -110,6 +111,17 @@ impl Settings {
         self.kv
             .get("theme")
             .map_or(ThemePref::System, ThemePref::parse)
+    }
+
+    /// `system` | `en` | `pt-BR`; missing/unknown → system.
+    pub fn lang(&self) -> LangPref {
+        self.kv
+            .get("lang")
+            .map_or(LangPref::System, LangPref::parse)
+    }
+
+    pub fn set_lang(&mut self, lang: LangPref) {
+        self.kv.set("lang", lang.as_str());
     }
 
     pub fn tour_done(&self) -> bool {
