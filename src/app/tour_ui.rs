@@ -64,13 +64,7 @@ impl AbstractApp {
 
     pub(crate) fn ring(&self, step: usize, el: Stateful<Div>, pal: &Palette) -> Stateful<Div> {
         el.when(self.tour_step == Some(step), |el| {
-            el.shadow(vec![gpui_base::box_shadow(
-                px(0.),
-                px(0.),
-                px(0.),
-                px(2.),
-                rgb(pal.fg).into(),
-            )])
+            el.border_2().border_color(rgb(pal.fg)).bg(rgb(pal.bg))
         })
     }
 }
