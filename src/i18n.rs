@@ -322,11 +322,16 @@ fn pt(k: Key) -> &'static str {
     }
 }
 
-pub fn t(k: Key) -> &'static str {
-    match current() {
+/// Resolve `k` in `lang` directly — `t` without touching the global.
+pub fn lookup(lang: Lang, k: Key) -> &'static str {
+    match lang {
         Lang::En => en(k),
         Lang::PtBr => pt(k),
     }
+}
+
+pub fn t(k: Key) -> &'static str {
+    lookup(current(), k)
 }
 
 /// `t` with `{name}` placeholders replaced from `args`. `{MOD}` expands to

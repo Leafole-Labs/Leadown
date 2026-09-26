@@ -322,7 +322,8 @@ impl Render for AbstractApp {
 
 #[cfg(test)]
 mod tests {
-    use super::{NoteFile, title_of, write_note};
+    use super::{NoteFile, raw_title, title_of, write_note};
+    use crate::i18n::{self, Key, t};
     use crate::vault;
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex};
@@ -393,6 +394,10 @@ mod tests {
 
     #[test]
     fn untitled_filename_does_not_depend_on_language() {
+        // No `i18n::set` here — the global language races with parallel tests.
+        assert_eq!(i18n::lookup(i18n::Lang::En, Key::Untitled), "Untitled");
+        assert_eq!(raw_title("   \n"), "");
+        assert_eq!(title_of(""), t(Key::Untitled));
         let dir = std::env::temp_dir().join(format!(
             "abstract-app-test-untitled-lang-{}",
             std::process::id()
@@ -400,12 +405,8 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let file = note(dir.join("x.md"));
         let lock = Arc::new(Mutex::new(()));
-        crate::i18n::set(crate::i18n::Lang::En);
-        // Display falls back to "Untitled" but the file keeps the canonical stem.
-        assert_eq!(title_of(""), "Untitled");
         assert!(write_note(&lock, &file, true, "   \n").unwrap());
         assert_eq!(file.lock().unwrap().path, dir.join("Sem título.md"));
-        crate::i18n::set(crate::i18n::Lang::PtBr);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
