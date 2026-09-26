@@ -162,7 +162,7 @@ pub fn stem_for_title(title: &str) -> String {
     let trimmed = cleaned.trim().trim_matches('.').trim();
     let stem: String = trimmed.chars().take(80).collect();
     if stem.is_empty() {
-        "Sem título".to_string()
+        crate::i18n::t(crate::i18n::Key::Untitled).to_string()
     } else {
         stem
     }
@@ -190,10 +190,13 @@ pub fn is_placeholder_stem(stem: &str) -> bool {
     if let Some(rest) = stem.strip_prefix("nota-") {
         return !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit());
     }
-    stem == "Sem título"
-        || stem
-            .strip_prefix("Sem título ")
-            .is_some_and(|r| !r.is_empty() && r.bytes().all(|b| b.is_ascii_digit()))
+    crate::i18n::Lang::ALL.iter().any(|l| {
+        let s = crate::i18n::lookup(*l, crate::i18n::Key::Untitled);
+        stem == s
+            || stem
+                .strip_prefix(&format!("{s} "))
+                .is_some_and(|r| !r.is_empty() && r.bytes().all(|b| b.is_ascii_digit()))
+    })
 }
 
 /// The note follows its title: either a placeholder name or exactly the
