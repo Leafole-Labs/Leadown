@@ -13,6 +13,19 @@ mkdir -p dist
 case "${target}" in
 *-apple-darwin | *-linux-gnu) ;;
 
+*-pc-windows-msvc)
+    # Windows: zip with the .exe (icon is embedded by build.rs) + docs
+    stage="dist/pkg"
+    rm -rf "${stage}"
+    mkdir -p "${stage}"
+    cp "${bin}.exe" "${stage}/abstract-editor.exe"
+    cp README.md LICENSE "${stage}/"
+    (cd "${stage}" && 7z a -tzip "../abstract-editor-${version}-${artifact}.zip" . >/dev/null)
+    rm -rf "${stage}"
+    ls -lh dist/
+    exit 0
+    ;;
+
 *)
     echo "unsupported target: ${target}" >&2
     exit 1
