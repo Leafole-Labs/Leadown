@@ -21,13 +21,14 @@ impl AbstractApp {
             )],
         ));
 
-        let toolbar = titlebar_drag(div().id("toolbar"))
+        let toolbar = drag_fallback(div().id("toolbar"))
             .h(px(48.))
             .flex_none()
             .flex()
             .items_center()
             .gap(px(2.))
-            .px(px(9.))
+            .pl(px(chrome_left_pad(!self.sidebar_open)))
+            .pr(px(9.))
             .child(
                 self.ring(
                     5,
@@ -54,7 +55,7 @@ impl AbstractApp {
                 )
                 .on_click(cx.listener(|this, _, window, cx| this.open_search(window, cx))),
             )
-            .child(div().flex_1())
+            .child(titlebar_drag(div().id("toolbar-drag")).flex_1().h_full())
             .child(rise(
                 self.ring(
                     3,
@@ -104,7 +105,9 @@ impl AbstractApp {
                     .on_click(cx.listener(|this, _, window, cx| this.delete_note(window, cx))),
                 )
             })
-            .child(window_controls(window, &pal));
+            .when(cfg!(not(target_os = "macos")), |t| {
+                t.child(window_controls(window, &pal))
+            });
 
         let body = if self.loading {
             div().flex_1().into_any_element()

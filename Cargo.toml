@@ -26,6 +26,9 @@ tree-sitter-md = "=0.5.3"
 trash = "5"
 unicode-segmentation = "1"
 
+[build-dependencies]
+winresource = "=0.1.31"
+
 [package.metadata.deb]
 depends = "libxkbcommon0, libxkbcommon-x11-0, libwayland-client0, libxcb1, libfontconfig1"
 section = "editors"
@@ -39,6 +42,11 @@ assets = [
     [
         "assets/abstract-editor.desktop",
         "usr/share/applications/abstract-editor.desktop",
+        "644",
+    ],
+    [
+        "assets/abstract-editor.png",
+        "usr/share/icons/hicolor/512x512/apps/abstract-editor.png",
         "644",
     ],
 ]

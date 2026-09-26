@@ -17,8 +17,22 @@ pub(crate) fn session_window(window: &Window) -> SessionWindow {
     }
 }
 
-/// Minimize / maximize-restore / close. Shown in both decoration modes: the
-/// app requests no compositor titlebar, so these are the only controls.
+/// Width reserved for the native macOS traffic lights in the header.
+pub(crate) const TRAFFIC_LIGHT_INSET: f32 = 78.;
+
+/// Left padding for header rows: on macOS, reserve space for the traffic
+/// lights when they sit over this area.
+pub(crate) fn chrome_left_pad(native_controls_left: bool) -> f32 {
+    if cfg!(target_os = "macos") && native_controls_left {
+        TRAFFIC_LIGHT_INSET
+    } else {
+        9.
+    }
+}
+
+/// Minimize / maximize-restore / close. Not shown on macOS, where the native
+/// traffic lights already provide them; on other platforms the app requests
+/// no compositor titlebar, so these are the only controls.
 pub(crate) fn window_controls(window: &Window, pal: &Palette) -> impl IntoElement {
     let caps = window.window_controls();
     let maximized = window.is_maximized();
@@ -40,11 +54,14 @@ pub(crate) fn window_controls(window: &Window, pal: &Palette) -> impl IntoElemen
                         "win-min",
                         "icons/minimize.svg",
                         "Minimizar",
+                        WindowControlArea::Min,
                         false,
                         dim,
                         hover,
                     )
-                    .on_click(|_, window, _| window.minimize_window()),
+                    .when(!cfg!(windows), |b| {
+                        b.on_click(|_, window, _| window.minimize_window())
+                    }),
                 )
             })
             .when(caps.maximize, |r| {
@@ -54,30 +71,54 @@ pub(crate) fn window_controls(window: &Window, pal: &Palette) -> impl IntoElemen
                     ("icons/maximize.svg", "Maximizar")
                 };
                 r.child(
-                    win_btn("win-max", path, label, false, dim, hover)
-                        .on_click(|_, window, _| window.zoom_window()),
+                    win_btn(
+                        "win-max",
+                        path,
+                        label,
+                        WindowControlArea::Max,
+                        false,
+                        dim,
+                        hover,
+                    )
+                    .when(!cfg!(windows), |b| {
+                        b.on_click(|_, window, _| window.zoom_window())
+                    }),
                 )
             })
             .child(
-                win_btn("win-close", "icons/close.svg", "Fechar", true, dim, hover)
-                    .on_click(|_, window, _| window.remove_window())
-                    .text_color(rgb(fg)),
+                win_btn(
+                    "win-close",
+                    "icons/close.svg",
+                    "Fechar",
+                    WindowControlArea::Close,
+                    true,
+                    dim,
+                    hover,
+                )
+                .when(!cfg!(windows), |b| {
+                    b.on_click(|_, window, _| window.remove_window())
+                })
+                .text_color(rgb(fg)),
             )
     })
 }
 
 /// A window-chrome button: icon centered in a small square, red hover when
-/// `danger` (the close button).
+/// `danger` (the close button). On Windows the control area routes the click
+/// through the native non-client handler, which also handles restore and
+/// Win11 snap layouts; other platforms use the client `on_click`.
 pub(crate) fn win_btn(
     id: &'static str,
     path: &'static str,
     label: &'static str,
+    area: WindowControlArea,
     danger: bool,
     dim: u32,
     hover: u32,
 ) -> Stateful<Div> {
     div()
         .id(id)
+        .when(cfg!(windows), |b| b.window_control_area(area))
         .role(Role::Button)
         .aria_label(label)
         .size(px(28.))
@@ -98,6 +139,18 @@ pub(crate) fn win_btn(
 }
 
 /// Marks `el` as a window-drag region: primary-button drags move the window.
+/// The control area resolves the drag on Windows, where `start_window_move`
+/// is a no-op; the mouse-down handler covers the other platforms.
+///
+/// Only wrap empty filler elements: Windows hit-tests the control area over
+/// the whole element, so children under it would never receive clicks.
 pub(crate) fn titlebar_drag(el: Stateful<Div>) -> Stateful<Div> {
+    el.window_control_area(WindowControlArea::Drag)
+        .on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
+}
+
+/// Drag handler for headers whose children fill them: `start_window_move`
+/// on macOS/Linux; a no-op on Windows, where drags need `titlebar_drag`.
+pub(crate) fn drag_fallback(el: Stateful<Div>) -> Stateful<Div> {
     el.on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
 }

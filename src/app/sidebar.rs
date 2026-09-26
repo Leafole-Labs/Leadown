@@ -237,15 +237,15 @@ impl AbstractApp {
                     .h_full()
                     .flex()
                     .flex_col()
-                    // 48px header = toolbar height; empty area drags the window.
+                    // 48px header = toolbar height; drags the window.
                     .child(
-                        titlebar_drag(div().id("sidebar-head"))
+                        drag_fallback(div().id("sidebar-head"))
                             .h(px(48.))
                             .flex_none()
                             .flex()
                             .items_center()
                             .gap(px(4.))
-                            .pl(px(9.))
+                            .pl(px(chrome_left_pad(true)))
                             .pr(px(9.))
                             .child(
                                 self.ring(

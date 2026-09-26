@@ -4,4 +4,5 @@ Name=abstract
 Comment=Minimal local-first markdown notes editor
 Exec=abstract-editor
 Terminal=false
+Icon=abstract-editor
 Categories=Office;TextEditor;

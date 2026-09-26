@@ -32,8 +32,9 @@ rm -rf "${stage}"
 if [[ "${target}" == *-apple-darwin ]]; then
     app="dist/abstract.app"
     rm -rf "${app}"
-    mkdir -p "${app}/Contents/MacOS"
+    mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
     cp "${bin}" "${app}/Contents/MacOS/abstract-editor"
+    cp assets/abstract.icns "${app}/Contents/Resources/abstract.icns"
     cat >"${app}/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -49,6 +50,8 @@ if [[ "${target}" == *-apple-darwin ]]; then
     <string>${version}</string>
     <key>CFBundleShortVersionString</key>
     <string>${version}</string>
+    <key>CFBundleIconFile</key>
+    <string>abstract</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>

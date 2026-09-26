@@ -97,11 +97,11 @@ pub fn load() -> Spaces {
             active: 0,
         });
     if spaces.paths.is_empty() {
-        spaces.paths.push(
-            xdg("XDG_DATA_HOME", ".local/share")
-                .join("abstract")
-                .join("Pessoal"),
-        );
+        let path = xdg("XDG_DATA_HOME", ".local/share")
+            .join("abstract")
+            .join("Pessoal");
+        let _ = std::fs::create_dir_all(&path);
+        spaces.paths.push(path);
     }
     if let Some(arg) = std::env::args_os().nth(1) {
         let p = PathBuf::from(arg);

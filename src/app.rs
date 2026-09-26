@@ -19,7 +19,9 @@ use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
 use crate::assets::{SANS, ease_out_quint, icon, icon_btn, rise};
-use crate::chrome::{session_window, titlebar_drag, window_controls};
+use crate::chrome::{
+    chrome_left_pad, drag_fallback, session_window, titlebar_drag, window_controls,
+};
 use crate::editor::{Changed, CompletionKey, LiveEditor, OpenLink};
 use crate::i18n::{self, Key, t, tf};
 use crate::keymap::*;

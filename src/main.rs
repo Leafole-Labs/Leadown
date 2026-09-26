@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod app;
 mod assets;
 mod buffer;
@@ -60,7 +62,7 @@ fn main() {
                         titlebar: Some(TitlebarOptions {
                             title: Some("abstract".into()),
                             appears_transparent: true,
-                            traffic_light_position: None,
+                            traffic_light_position: Some(point(px(12.), px(18.))),
                         }),
                         window_decorations: Some(WindowDecorations::Client),
                         app_owns_titlebar_drag: true,
