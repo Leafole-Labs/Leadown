@@ -38,7 +38,7 @@ depends = "libxkbcommon0, libxkbcommon-x11-0, libwayland-client0, libxcb1, libfo
 section = "editors"
 assets = [
     [
-        "target/x86_64-unknown-linux-gnu/release/abstract",
+        "target/release/abstract",
         "usr/bin/",
         "755",
     ],
