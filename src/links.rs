@@ -146,7 +146,7 @@ pub(crate) fn complete(tree: &[vault::Node], prefix: &str) -> Vec<String> {
     note_leaves(tree, &mut notes);
     let p = prefix.trim().to_lowercase();
     if p.is_empty() {
-        notes.sort_by(|a, b| b.modified.cmp(&a.modified));
+        notes.sort_by_key(|n| std::cmp::Reverse(n.modified));
         return notes.into_iter().take(8).map(|n| n.name.clone()).collect();
     }
     let mut stems: Vec<String> = notes

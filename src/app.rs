@@ -168,6 +168,8 @@ pub(crate) struct AbstractApp {
     _bounds_task: Option<Task<()>>,
     search: Option<search_ui::SearchPalette>,
     completion: Option<links_ui::Completion>,
+    backlinks: Vec<(PathBuf, String)>,
+    _backlinks_task: Option<Task<()>>,
     _watcher: Option<SpaceWatcher>,
     _watch_task: Option<Task<()>>,
     _subs: Vec<Subscription>,
@@ -247,6 +249,8 @@ impl AbstractApp {
             _bounds_task: None,
             search: None,
             completion: None,
+            backlinks: Vec::new(),
+            _backlinks_task: None,
             _watcher: None,
             _watch_task: None,
             _subs: vec![

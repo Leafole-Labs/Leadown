@@ -64,7 +64,9 @@ impl AbstractApp {
     }
 
     fn accept_completion(&mut self, ix: usize, cx: &mut Context<Self>) {
-        let Some(c) = self.completion.take() else { return };
+        let Some(c) = self.completion.take() else {
+            return;
+        };
         let Some(item) = c.items.get(ix).cloned() else {
             return;
         };
@@ -78,7 +80,9 @@ impl AbstractApp {
     pub(crate) fn completion_key(&mut self, key: &CompletionKey, cx: &mut Context<Self>) {
         match key.0 {
             CompletionMove::Up | CompletionMove::Down => {
-                let Some(c) = &mut self.completion else { return };
+                let Some(c) = &mut self.completion else {
+                    return;
+                };
                 let n = c.items.len();
                 c.selected = if matches!(key.0, CompletionMove::Down) {
                     (c.selected + 1) % n
@@ -93,6 +97,88 @@ impl AbstractApp {
             }
             CompletionMove::Cancel => self.clear_completion(cx),
         }
+    }
+
+    /// Recompute the "Referenciada por" list off-thread; applied only while
+    /// the same note is still open.
+    pub(crate) fn refresh_backlinks(&mut self, cx: &mut Context<Self>) {
+        let Some(path) = self.current.as_ref().map(|c| c.path()) else {
+            if !self.backlinks.is_empty() {
+                self.backlinks.clear();
+                cx.notify();
+            }
+            return;
+        };
+        let names = crate::links::names_of(&path, self.editor.read(cx).text());
+        let dir = self.dir.clone();
+        let note = path.clone();
+        self._backlinks_task = Some(cx.spawn(async move |this, cx| {
+            let found = cx
+                .background_executor()
+                .spawn(async move { crate::links::backlinks(&dir, &note, &names) })
+                .await;
+            this.update(cx, |this, cx| {
+                if this.current.as_ref().is_some_and(|c| c.path() == path) {
+                    this.backlinks = found;
+                    cx.notify();
+                }
+            })
+            .ok();
+        }));
+    }
+
+    /// Backlinks strip pinned to the bottom of the editor column.
+    pub(crate) fn render_backlinks(&self, cx: &mut Context<Self>) -> Option<impl IntoElement> {
+        if self.backlinks.is_empty() {
+            return None;
+        }
+        let pal = cx.palette();
+        let mut rows = div()
+            .flex()
+            .flex_col()
+            .px(px(10.))
+            .pb(px(8.))
+            .max_h(px(120.))
+            .overflow_hidden();
+        rows = rows.child(
+            div()
+                .pt(px(6.))
+                .pb(px(2.))
+                .text_size(px(11.))
+                .font_weight(FontWeight::MEDIUM)
+                .text_color(rgb(pal.faint))
+                .child("Referenciada por"),
+        );
+        for (ix, (path, title)) in self.backlinks.iter().enumerate() {
+            let p = path.clone();
+            rows = rows.child(
+                div()
+                    .id(("backlink", ix))
+                    .h(px(22.))
+                    .px(px(4.))
+                    .flex()
+                    .items_center()
+                    .gap(px(6.))
+                    .truncate()
+                    .text_size(px(12.))
+                    .text_color(rgb(pal.body))
+                    .rounded(px(4.))
+                    .cursor_pointer()
+                    .hover(|s| s.bg(rgb(pal.hover)))
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.open_path(p.clone(), None, window, cx)
+                    }))
+                    .child(icon("icons/link.svg", pal.faint).size(px(12.)))
+                    .child(title.clone()),
+            );
+        }
+        Some(
+            div()
+                .flex_none()
+                .w_full()
+                .child(div().h(px(1.)).mx(px(10.)).bg(rgb(pal.line)))
+                .child(rows),
+        )
     }
 
     /// Popup under the caret listing completion stems; mounted inside the
@@ -117,9 +203,7 @@ impl AbstractApp {
                     .cursor_pointer()
                     .when(ix == c.selected, |s| s.bg(rgb(pal.active)))
                     .when(ix != c.selected, |s| s.hover(|s| s.bg(rgb(pal.hover))))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.accept_completion(ix, cx)
-                    }))
+                    .on_click(cx.listener(move |this, _, _, cx| this.accept_completion(ix, cx)))
                     .child(item.clone()),
             );
         }
