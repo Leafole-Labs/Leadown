@@ -1,6 +1,6 @@
 # <img src="assets/logo.png" width="96" alt="abstract logo"> abstract
 
-[![ci](https://github.com/horizzon3507/abstract-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/horizzon3507/abstract-editor/actions/workflows/ci.yml)
+[![ci](https://github.com/fireflylabss/abstract/actions/workflows/ci.yml/badge.svg)](https://github.com/fireflylabss/abstract/actions/workflows/ci.yml)
 
 **abstract** — a minimal markdown notes editor, GPU-rendered with [GPUI](https://gpui.rs).
 
@@ -40,14 +40,14 @@ Or install the binary:
 
 ```bash
 cargo install --path .
-abstract-editor
+abstract
 ```
 
 ### Releases
 
-Prebuilt artifacts are attached to each [GitHub Release](https://github.com/horizzon3507/abstract-editor/releases):
+Prebuilt artifacts are attached to each [GitHub Release](https://github.com/fireflylabss/abstract/releases):
 
-- `abstract-editor-<version>-linux-x86_64.tar.gz` and a `.deb` package for Debian/Ubuntu.
+- `abstract-<version>-linux-x86_64.tar.gz` and a `.deb` package for Debian/Ubuntu.
 - `abstract-<version>-macos-aarch64.app.zip` / `...-macos-x86_64.app.zip` — bare `abstract.app` bundles plus a raw-binary tarball. The app is ad-hoc signed, so on first launch either right-click → **Open**, or run `xattr -dr com.apple.quarantine abstract.app`.
 
 ### macOS

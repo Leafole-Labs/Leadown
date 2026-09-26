@@ -128,6 +128,7 @@ pub(crate) fn win_btn(
         .justify_center()
         .rounded(px(6.))
         .cursor_pointer()
+        .occlude()
         .hover(move |s| {
             if danger {
                 s.bg(rgb(0xd92d20)).text_color(rgb(0xffffff))

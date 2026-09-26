@@ -43,6 +43,24 @@ pub struct Conceal {
     pub hidden: Range<usize>,
 }
 
+/// What a list-item marker renders as: a painted dot (concealed `-`/`+`/`*`),
+/// the literal `1.`/`1)` text, or a clickable checkbox.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Bullet {
+    Dot,
+    Ordered,
+    Task { checked: bool },
+}
+
+/// A list item line: `marker` is the concealed range (marker + trailing
+/// spaces; the raw node range for ordered items).
+pub struct Item {
+    pub line: usize,
+    pub depth: u8,
+    pub marker: Range<usize>,
+    pub bullet: Bullet,
+}
+
 #[derive(Default)]
 pub struct Analysis {
     pub flags: Vec<u16>,
@@ -54,6 +72,8 @@ pub struct Analysis {
     pub wiki_links: Vec<crate::links::WikiLink>,
     /// Task-list markers, in buffer order.
     pub tasks: Vec<Task>,
+    /// List items, in line order.
+    pub items: Vec<Item>,
 }
 
 pub struct Analyzer {
@@ -92,6 +112,7 @@ impl Analyzer {
             conceals: Vec::new(),
             wiki_links: Vec::new(),
             tasks: Vec::new(),
+            items: Vec::new(),
         };
         if len == 0 {
             return out;
@@ -194,16 +215,59 @@ impl Analyzer {
                 | "list_marker_star"
                 | "list_marker_dot"
                 | "list_marker_parenthesis" => {
+                    let ordered =
+                        matches!(node.kind(), "list_marker_dot" | "list_marker_parenthesis");
+                    let line = out.line_of(range.start);
+                    let line_range = out.lines[line].0.clone();
+                    let depth = ((range.start - line_range.start) / 2).min(6) as u8;
+                    // The node covers the marker only; swallow trailing spaces
+                    // so the painted bullet doesn't leave a gap.
+                    let mut marker = range.clone();
+                    while text.as_bytes().get(marker.end) == Some(&b' ') {
+                        marker.end += 1;
+                    }
                     out.mark(range, MARK);
+                    if !ordered {
+                        out.conceal(line_range, marker.clone());
+                    }
+                    out.items.push(Item {
+                        line,
+                        depth,
+                        marker,
+                        bullet: if ordered {
+                            Bullet::Ordered
+                        } else {
+                            Bullet::Dot
+                        },
+                    });
                     false
                 }
                 "task_list_marker_checked" | "task_list_marker_unchecked" => {
                     let checked = node.kind() == "task_list_marker_checked";
+                    let line = out.line_of(range.start);
+                    let line_range = out.lines[line].0.clone();
+                    let mut marker = range.clone();
+                    while text.as_bytes().get(marker.end) == Some(&b' ') {
+                        marker.end += 1;
+                    }
                     out.mark(range.clone(), MARK | TASK);
+                    out.conceal(line_range.clone(), marker.clone());
                     out.tasks.push(Task {
                         marker: range.clone(),
                         checked,
                     });
+                    match out.items.last_mut() {
+                        Some(i) if i.line == line => i.bullet = Bullet::Task { checked },
+                        _ => {
+                            let ws = text[line_range].bytes().take_while(|b| *b == b' ').count();
+                            out.items.push(Item {
+                                line,
+                                depth: (ws / 2).min(6) as u8,
+                                marker,
+                                bullet: Bullet::Task { checked },
+                            });
+                        }
+                    }
                     if checked {
                         let end = out.lines[out.line_of(range.start)].0.end;
                         out.mark(range.end..end, DONE);
@@ -553,6 +617,38 @@ mod tests {
         assert!(at("[x]") & TASK != 0);
         assert!(at("done") & DONE != 0);
         assert!(at("todo") & DONE == 0);
+    }
+
+    #[test]
+    fn list_items_track_depth_bullet_and_conceal() {
+        let t = "- a\n  - b\n1. c\n- [x] d\n- [ ] e\n";
+        let a = Analyzer::new().analyze(t);
+        let bullets: Vec<_> = a.items.iter().map(|i| i.bullet).collect();
+        assert_eq!(
+            bullets,
+            [
+                Bullet::Dot,
+                Bullet::Dot,
+                Bullet::Ordered,
+                Bullet::Task { checked: true },
+                Bullet::Task { checked: false },
+            ]
+        );
+        let depths: Vec<_> = a.items.iter().map(|i| i.depth).collect();
+        assert_eq!(depths, [0, 1, 0, 0, 0]);
+        // Concealed ranges cover the dash markers (with trailing spaces)
+        // and the task boxes; the ordered marker stays visible.
+        let hidden: Vec<_> = a.conceals.iter().map(|c| c.hidden.clone()).collect();
+        assert!(hidden.contains(&(0..2)), "{hidden:?}");
+        assert!(hidden.contains(&(6..8)), "{hidden:?}");
+        let bx = t.find("[x]").unwrap();
+        assert!(hidden.iter().any(|r| *r == (bx..bx + 4)), "{hidden:?}");
+        let bu = t.find("[ ]").unwrap();
+        assert!(hidden.iter().any(|r| *r == (bu..bu + 4)), "{hidden:?}");
+        // `- [x] d` text still flagged DONE.
+        let at = |s: &str| a.flags[t.find(s).unwrap()];
+        assert!(at("[x]") & TASK != 0);
+        assert!(at("d\n") & DONE != 0);
     }
 
     #[test]
