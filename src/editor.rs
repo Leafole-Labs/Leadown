@@ -356,6 +356,38 @@ impl LiveEditor {
             cx.emit(OpenLink(self.buf.text()[l.target.clone()].to_string()));
             return;
         }
+        // Click on a painted checkbox toggles the task whose marker is in that
+        // line. (Only reachable while the marker is concealed — the check
+        // bounds only exist then.)
+        if ev.click_count == 1
+            && !ev.modifiers.secondary()
+            && let Some(l) = self.layout.as_ref()
+        {
+            let p = point(
+                f32::from(ev.position.x - l.bounds.left()),
+                f32::from(ev.position.y - l.bounds.top()) + l.scroll,
+            );
+            if let Some(line) = l
+                .lines
+                .iter()
+                .find(|line| line.check.is_some_and(|c| c.contains(&p)))
+                && let Some(t) = self
+                    .analysis
+                    .tasks
+                    .iter()
+                    .find(|t| line.buf.contains(&t.marker.start))
+            {
+                let cur = self.buf.cursor();
+                self.buf.edit(
+                    t.marker.clone(),
+                    if t.checked { "[ ]" } else { "[x]" },
+                    None,
+                );
+                self.buf.restore_cursor(cur);
+                self.changed(cx);
+                return;
+            }
+        }
         window.focus(&self.focus, cx);
         let Some(off) = self.offset_at(ev.position) else {
             return;
@@ -684,6 +716,10 @@ struct LineBox {
     rows_h: f32,
     pad_bottom: f32,
     wrapped: WrappedLine,
+    /// List bullet to paint, when the marker is currently concealed.
+    bullet: Option<(md::Bullet, u8)>,
+    /// Task checkbox bounds in content coordinates (for hit-testing).
+    check: Option<Bounds<f32>>,
 }
 
 impl LineBox {
@@ -916,9 +952,17 @@ impl Element for EditorElement {
         let mut y = PAD_TOP;
         let mut display = String::new();
         let mut runs = Vec::new();
+        let mut items = a.items.iter().peekable();
         for (ix, (buf, kind)) in a.lines.iter().enumerate() {
             let (fs, lh, above, below) = metrics(*kind);
-            let indent = if *kind == Kind::Quote { 18. } else { 0. };
+            let item = match items.peek() {
+                Some(i) if i.line == ix => items.next(),
+                _ => None,
+            };
+            let mut indent = if *kind == Kind::Quote { 18. } else { 0. };
+            if let Some(i) = item {
+                indent += 22. * (i.depth as f32 + 1.);
+            }
             display.clear();
             runs.clear();
             let segs = if text.is_empty() && ix == 0 {
@@ -943,6 +987,13 @@ impl Element for EditorElement {
                 }
                 segs
             };
+            // A concealed marker (selection outside the item's owner line)
+            // shows as a painted bullet instead.
+            let bullet = item.and_then(|i| {
+                segs.first()
+                    .is_some_and(|s| s.start >= i.marker.end)
+                    .then_some((i.bullet, i.depth))
+            });
             let wrapped = window
                 .text_system()
                 .shape_text(
@@ -968,6 +1019,8 @@ impl Element for EditorElement {
                 rows_h,
                 pad_bottom: below,
                 wrapped,
+                bullet,
+                check: None,
             });
         }
         let content_h = y + PAD_TOP;
@@ -1006,7 +1059,9 @@ impl Element for EditorElement {
         window: &mut Window,
         cx: &mut App,
     ) {
-        let Some(layout) = layout.take() else { return };
+        let Some(mut layout) = layout.take() else {
+            return;
+        };
         let pal = *cx.global::<Palette>();
         let (focus, sel, cursor, caret) = {
             let ed = self.0.read(cx);
@@ -1036,7 +1091,7 @@ impl Element for EditorElement {
         }
 
         window.with_content_mask(Some(ContentMask { bounds }), |window| {
-            for line in &layout.lines[first..] {
+            for line in &mut layout.lines[first..] {
                 if line.top - sy > view_h {
                     break;
                 }
@@ -1095,6 +1150,71 @@ impl Element for EditorElement {
                             ),
                             rgba(pal.selection),
                         ));
+                    }
+                }
+
+                // List bullets where the marker is concealed.
+                if let Some((bullet, depth)) = line.bullet {
+                    match bullet {
+                        md::Bullet::Dot => {
+                            let cxp = line.x - 13.;
+                            let cyp = line.top + line.lh / 2.;
+                            let filled = depth == 0;
+                            window.paint_quad(quad(
+                                Bounds::new(at(cxp - 2.5, cyp - 2.5), size(px(5.), px(5.))),
+                                px(2.5),
+                                if filled {
+                                    hsla(pal.dim)
+                                } else {
+                                    transparent_black()
+                                },
+                                if filled { px(0.) } else { px(1.5) },
+                                hsla(pal.dim),
+                                BorderStyle::Solid,
+                            ));
+                        }
+                        md::Bullet::Task { checked } => {
+                            let sq = Bounds {
+                                origin: point(line.x - 21., line.top + line.lh / 2. - 7.5),
+                                size: size(15., 15.),
+                            };
+                            line.check = Some(sq);
+                            let px_sq =
+                                Bounds::new(at(sq.origin.x, sq.origin.y), size(px(15.), px(15.)));
+                            if checked {
+                                window.paint_quad(quad(
+                                    px_sq,
+                                    px(4.),
+                                    hsla(pal.head),
+                                    px(0.),
+                                    transparent_black(),
+                                    BorderStyle::Solid,
+                                ));
+                                window
+                                    .paint_svg(
+                                        Bounds::new(
+                                            at(sq.origin.x + 2., sq.origin.y + 2.),
+                                            size(px(11.), px(11.)),
+                                        ),
+                                        "icons/check.svg".into(),
+                                        None,
+                                        TransformationMatrix::unit(),
+                                        hsla(pal.bg),
+                                        cx,
+                                    )
+                                    .ok();
+                            } else {
+                                window.paint_quad(quad(
+                                    px_sq,
+                                    px(4.),
+                                    transparent_black(),
+                                    px(1.5),
+                                    hsla(pal.muted),
+                                    BorderStyle::Solid,
+                                ));
+                            }
+                        }
+                        md::Bullet::Ordered => {}
                     }
                 }
 
