@@ -54,11 +54,14 @@ pub(crate) fn window_controls(window: &Window, pal: &Palette) -> impl IntoElemen
                         "win-min",
                         "icons/minimize.svg",
                         "Minimizar",
+                        WindowControlArea::Min,
                         false,
                         dim,
                         hover,
                     )
-                    .on_click(|_, window, _| window.minimize_window()),
+                    .when(!cfg!(windows), |b| {
+                        b.on_click(|_, window, _| window.minimize_window())
+                    }),
                 )
             })
             .when(caps.maximize, |r| {
@@ -68,30 +71,54 @@ pub(crate) fn window_controls(window: &Window, pal: &Palette) -> impl IntoElemen
                     ("icons/maximize.svg", "Maximizar")
                 };
                 r.child(
-                    win_btn("win-max", path, label, false, dim, hover)
-                        .on_click(|_, window, _| window.zoom_window()),
+                    win_btn(
+                        "win-max",
+                        path,
+                        label,
+                        WindowControlArea::Max,
+                        false,
+                        dim,
+                        hover,
+                    )
+                    .when(!cfg!(windows), |b| {
+                        b.on_click(|_, window, _| window.zoom_window())
+                    }),
                 )
             })
             .child(
-                win_btn("win-close", "icons/close.svg", "Fechar", true, dim, hover)
-                    .on_click(|_, window, _| window.remove_window())
-                    .text_color(rgb(fg)),
+                win_btn(
+                    "win-close",
+                    "icons/close.svg",
+                    "Fechar",
+                    WindowControlArea::Close,
+                    true,
+                    dim,
+                    hover,
+                )
+                .when(!cfg!(windows), |b| {
+                    b.on_click(|_, window, _| window.remove_window())
+                })
+                .text_color(rgb(fg)),
             )
     })
 }
 
 /// A window-chrome button: icon centered in a small square, red hover when
-/// `danger` (the close button).
+/// `danger` (the close button). On Windows the control area routes the click
+/// through the native non-client handler, which also handles restore and
+/// Win11 snap layouts; other platforms use the client `on_click`.
 pub(crate) fn win_btn(
     id: &'static str,
     path: &'static str,
     label: &'static str,
+    area: WindowControlArea,
     danger: bool,
     dim: u32,
     hover: u32,
 ) -> Stateful<Div> {
     div()
         .id(id)
+        .when(cfg!(windows), |b| b.window_control_area(area))
         .role(Role::Button)
         .aria_label(label)
         .size(px(28.))
