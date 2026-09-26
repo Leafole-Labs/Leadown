@@ -955,10 +955,12 @@ impl Element for EditorElement {
         let mut items = a.items.iter().peekable();
         for (ix, (buf, kind)) in a.lines.iter().enumerate() {
             let (fs, lh, above, below) = metrics(*kind);
-            let item = match items.peek() {
-                Some(i) if i.line == ix => items.next(),
-                _ => None,
-            };
+            // A line can carry several markers (e.g. "- 1. x"); the
+            // innermost item decides the indent and the painted bullet.
+            let mut item = None;
+            while matches!(items.peek(), Some(i) if i.line == ix) {
+                item = items.next();
+            }
             let mut indent = if *kind == Kind::Quote { 18. } else { 0. };
             if let Some(i) = item {
                 indent += 22. * (i.depth as f32 + 1.);
@@ -990,9 +992,10 @@ impl Element for EditorElement {
             // A concealed marker (selection outside the item's owner line)
             // shows as a painted bullet instead.
             let bullet = item.and_then(|i| {
-                segs.first()
-                    .is_some_and(|s| s.start >= i.marker.end)
-                    .then_some((i.bullet, i.depth))
+                let hidden = !segs
+                    .iter()
+                    .any(|s| s.start < i.marker.end && i.marker.start < s.end);
+                hidden.then_some((i.bullet, i.depth))
             });
             let wrapped = window
                 .text_system()
