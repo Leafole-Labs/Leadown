@@ -94,7 +94,7 @@ jobs:
           rm -f "$p12"
           xcrun notarytool store-credentials abstract-notary \
             --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
-            --password "$APPLE_APP_PASSWORD" --keychain build.keychain
+            --password "$APPLE_APP_PASSWORD"
           echo "MACOS_SIGN_IDENTITY=$MACOS_SIGNING_IDENTITY" >> "$GITHUB_ENV"
           echo "MACOS_NOTARIZE=1" >> "$GITHUB_ENV"
       - name: Package
