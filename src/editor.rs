@@ -115,6 +115,9 @@ pub fn bind_keys(cx: &mut App) {
 
 pub struct Changed;
 
+/// Secondary-click (Ctrl/`Cmd`) on a `[[wiki-link]]` target.
+pub struct OpenLink(pub String);
+
 pub struct LiveEditor {
     focus: FocusHandle,
     buf: Buffer,
@@ -130,6 +133,7 @@ pub struct LiveEditor {
 }
 
 impl EventEmitter<Changed> for LiveEditor {}
+impl EventEmitter<OpenLink> for LiveEditor {}
 
 impl Focusable for LiveEditor {
     fn focus_handle(&self, _: &App) -> FocusHandle {
@@ -293,6 +297,18 @@ impl LiveEditor {
     }
 
     fn mouse_down(&mut self, ev: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        // Ctrl/Cmd+click opens the link instead of moving the caret.
+        if ev.modifiers.secondary()
+            && let Some(off) = self.offset_at(ev.position)
+            && let Some(l) = self
+                .analysis
+                .wiki_links
+                .iter()
+                .find(|l| l.range.contains(&off))
+        {
+            cx.emit(OpenLink(self.buf.text()[l.target.clone()].to_string()));
+            return;
+        }
         window.focus(&self.focus, cx);
         let Some(off) = self.offset_at(ev.position) else {
             return;

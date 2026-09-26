@@ -1,3 +1,4 @@
+mod links_ui;
 mod main_view;
 mod notes;
 mod rename;
@@ -19,7 +20,7 @@ use gpui_kit::*;
 
 use crate::assets::{SANS, ease_out_quint, icon, icon_btn, rise};
 use crate::chrome::{session_window, titlebar_drag, window_controls};
-use crate::editor::{Changed, LiveEditor};
+use crate::editor::{Changed, LiveEditor, OpenLink};
 use crate::keymap::*;
 use crate::spaces::{self, Spaces};
 use crate::store::{self, Session, SessionNote, SessionWindow, Settings};
@@ -184,6 +185,14 @@ impl AbstractApp {
             this.schedule_save(cx);
             cx.notify();
         });
+        let on_link = cx.subscribe(&editor, |_this: &mut Self, _, ev: &OpenLink, cx| {
+            let target = ev.0.clone();
+            cx.spawn(async move |this, cx| {
+                this.update_in(cx, |this, window, cx| this.open_link(&target, window, cx))
+                    .ok();
+            })
+            .detach();
+        });
         let on_quit = cx.on_app_quit(|this, cx| {
             this.flush_blocking(cx);
             async {}
@@ -234,7 +243,14 @@ impl AbstractApp {
             search: None,
             _watcher: None,
             _watch_task: None,
-            _subs: vec![on_change, on_quit, on_bounds, on_activation, on_appearance],
+            _subs: vec![
+                on_change,
+                on_link,
+                on_quit,
+                on_bounds,
+                on_activation,
+                on_appearance,
+            ],
         };
         app.sidebar_open = app.session.sidebar_open().unwrap_or(true);
         app._io_task = Some(cx.spawn_in(window, async move |this, cx| {
