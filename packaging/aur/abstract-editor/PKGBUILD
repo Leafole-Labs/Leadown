@@ -24,9 +24,8 @@ makedepends=('rust' 'pkgconf')
 provides=('abstract')
 conflicts=('abstract-editor-bin')
 options=('!lto')
-# sha256sums must be filled on release (updpkgsums)
 source=("$pkgname-$pkgver.tar.gz::https://github.com/fireflylabss/abstract/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('f92d2572f074205b9ff115e879d3d67f8d292e3c0d4a3cbcc231343066151510')
 
 prepare() {
 	cd "abstract-$pkgver"
