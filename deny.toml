@@ -27,6 +27,7 @@ allow = [
     "OpenSSL",
     "bzip2-1.0.6",
     "0BSD",
+    "NCSA",
 ]
 
 [bans]
