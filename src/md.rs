@@ -168,9 +168,11 @@ impl Analyzer {
                 | "list_marker_plus"
                 | "list_marker_star"
                 | "list_marker_dot"
-                | "list_marker_parenthesis"
-                | "task_list_marker_checked"
-                | "task_list_marker_unchecked" => {
+                | "list_marker_parenthesis" => {
+                    out.mark(range, MARK);
+                    false
+                }
+                "task_list_marker_checked" | "task_list_marker_unchecked" => {
                     let checked = node.kind() == "task_list_marker_checked";
                     out.mark(range.clone(), MARK | TASK);
                     out.tasks.push(Task {
