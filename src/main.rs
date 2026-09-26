@@ -18,6 +18,8 @@ mod tour;
 mod vault;
 mod watch;
 
+use std::borrow::Cow;
+
 use gpui_kit::component::Root;
 use gpui_kit::*;
 
@@ -31,6 +33,9 @@ fn main() {
         .with_assets(AppAssets)
         .run(|cx: &mut App| {
             gpui_kit::init(cx);
+            cx.text_system()
+                .add_fonts(assets::FONTS.iter().map(|f| Cow::Borrowed(*f)).collect())
+                .expect("bundled fonts");
             editor::bind_keys(cx);
             tour::bind_keys(cx);
             bind_keys(cx);

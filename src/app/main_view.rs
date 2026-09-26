@@ -37,6 +37,7 @@ impl AbstractApp {
                         "icons/sidebar.svg",
                         tf(Key::Sidebar, &[]).into(),
                         !self.sidebar_open,
+                        &pal,
                     )
                     .on_click(cx.listener(|this, _, _, cx| this.toggle_sidebar(cx))),
                     &pal,
@@ -52,6 +53,7 @@ impl AbstractApp {
                     "icons/search.svg",
                     tf(Key::Search, &[]).into(),
                     false,
+                    &pal,
                 )
                 .on_click(cx.listener(|this, _, window, cx| this.open_search(window, cx))),
             )
@@ -85,7 +87,7 @@ impl AbstractApp {
             .child(
                 self.ring(
                     4,
-                    icon_btn("theme", self.theme_pref.icon(), theme_tip, false)
+                    icon_btn("theme", self.theme_pref.icon(), theme_tip, false, &pal)
                         .on_click(cx.listener(|this, _, window, cx| this.cycle_theme(window, cx))),
                     &pal,
                 )
@@ -101,6 +103,7 @@ impl AbstractApp {
                         "icons/delete.svg",
                         tf(Key::DeleteNote, &[]).into(),
                         false,
+                        &pal,
                     )
                     .on_click(cx.listener(|this, _, window, cx| this.delete_note(window, cx))),
                 )

@@ -304,6 +304,7 @@ impl AbstractApp {
                                         "icons/folder-add.svg",
                                         t(Key::NewFolder).into(),
                                         false,
+                                        &pal,
                                     )
                                     .on_click(cx.listener(
                                         |this, _, window, cx| this.new_folder(window, cx),
@@ -321,6 +322,7 @@ impl AbstractApp {
                                     "icons/add.svg",
                                     tf(Key::NewNote, &[]).into(),
                                     false,
+                                    &pal,
                                 )
                                 .on_click(
                                     cx.listener(|this, _, window, cx| this.new_note(window, cx)),

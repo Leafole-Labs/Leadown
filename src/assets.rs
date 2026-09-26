@@ -4,9 +4,23 @@ use std::time::Duration;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
 
-use crate::theme;
+use crate::theme::Palette;
 // ── Palette: pure monochrome, driven by `Palette` global ──────────────────
 pub(crate) const SANS: &str = "Noto Sans";
+pub(crate) const MONO: &str = "Noto Sans Mono";
+
+/// Bundled Noto fonts (OFL), registered at startup so Windows/Linux don't
+/// depend on system fonts.
+pub(crate) const FONTS: &[&[u8]] = &[
+    include_bytes!("../assets/fonts/NotoSans-Regular.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-Medium.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-SemiBold.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-Bold.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-Italic.ttf"),
+    include_bytes!("../assets/fonts/NotoSans-SemiBoldItalic.ttf"),
+    include_bytes!("../assets/fonts/NotoSansMono-Regular.ttf"),
+    include_bytes!("../assets/fonts/NotoSansMono-Bold.ttf"),
+];
 /// Embedded Hugeicons (stroke-rounded, MIT). Anything else falls through to
 /// the component library's default icon set.
 const ICONS: [(&str, &[u8]); 17] = [
@@ -133,6 +147,7 @@ pub(crate) fn icon_btn(
     path: &'static str,
     label: SharedString,
     on: bool,
+    pal: &Palette,
 ) -> Stateful<Div> {
     let tip = label.clone();
     div()
@@ -149,11 +164,7 @@ pub(crate) fn icon_btn(
         .justify_center()
         .rounded(px(6.))
         .cursor_pointer()
-        .map(|b| {
-            let pal = theme::DARK;
-            let _ = pal;
-            b
-        })
-        .when(on, |s| s.bg(rgb(0)))
-        .child(icon(path, 0))
+        .hover(move |s| s.bg(rgb(pal.hover)))
+        .when(on, move |s| s.bg(rgb(pal.active)))
+        .child(icon(path, pal.fg))
 }
