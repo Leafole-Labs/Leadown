@@ -1,6 +1,6 @@
 [package]
 name = "abstract-editor"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Minimal local-first markdown notes editor, GPU-rendered with GPUI"
 repository = "https://github.com/fireflylabss/abstract"
@@ -53,6 +53,21 @@ assets = [
         "usr/share/icons/hicolor/512x512/apps/abstract.png",
         "644",
     ],
+]
+
+[package.metadata.generate-rpm]
+requires = [
+    "libxkbcommon",
+    "libxkbcommon-x11",
+    "libwayland-client",
+    "libxcb",
+    "fontconfig",
+]
+assets = [
+    { source = "target/release/abstract", dest = "/usr/bin/abstract", mode = "755" },
+    { source = "README.md", dest = "/usr/share/doc/abstract/README.md", mode = "644" },
+    { source = "assets/abstract.desktop", dest = "/usr/share/applications/abstract.desktop", mode = "644" },
+    { source = "assets/abstract.png", dest = "/usr/share/icons/hicolor/512x512/apps/abstract.png", mode = "644" },
 ]
 
 [profile.release]
