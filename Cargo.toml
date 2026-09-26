@@ -2,6 +2,13 @@
 name = "abstract-editor"
 version = "0.1.0"
 edition = "2024"
+description = "Minimal local-first markdown notes editor, GPU-rendered with GPUI"
+repository = "https://github.com/horizzon3507/abstract-editor"
+license = "Apache-2.0"
+rust-version = "1.97"
+keywords = ["markdown", "notes", "editor", "gpui"]
+categories = ["text-editors"]
+readme = "README.md"
 
 [dependencies]
 gpui = { version = "=0.3.4", package = "gpui-pre" }
