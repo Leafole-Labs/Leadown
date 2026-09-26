@@ -51,7 +51,7 @@ paru -S abstract-editor-bin  # prebuilt binary
 Download the `.deb` from the latest release, then:
 
 ```bash
-sudo dpkg -i abstract_<version>_amd64.deb
+sudo dpkg -i abstract-editor_<version>_amd64.deb
 ```
 
 ### From source
