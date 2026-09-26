@@ -1,4 +1,4 @@
-# ◇ abstract
+# <img src="assets/logo.png" width="96" alt="abstract logo"> abstract
 
 [![ci](https://github.com/horizzon3507/abstract-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/horizzon3507/abstract-editor/actions/workflows/ci.yml)
 

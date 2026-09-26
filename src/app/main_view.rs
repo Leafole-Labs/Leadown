@@ -27,7 +27,8 @@ impl AbstractApp {
             .flex()
             .items_center()
             .gap(px(2.))
-            .px(px(9.))
+            .pl(px(chrome_left_pad(!self.sidebar_open)))
+            .pr(px(9.))
             .child(
                 self.ring(
                     5,
@@ -104,7 +105,9 @@ impl AbstractApp {
                     .on_click(cx.listener(|this, _, window, cx| this.delete_note(window, cx))),
                 )
             })
-            .child(window_controls(window, &pal));
+            .when(cfg!(not(target_os = "macos")), |t| {
+                t.child(window_controls(window, &pal))
+            });
 
         let body = if self.loading {
             div().flex_1().into_any_element()

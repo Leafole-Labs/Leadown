@@ -245,7 +245,7 @@ impl AbstractApp {
                             .flex()
                             .items_center()
                             .gap(px(4.))
-                            .pl(px(9.))
+                            .pl(px(chrome_left_pad(true)))
                             .pr(px(9.))
                             .child(
                                 self.ring(

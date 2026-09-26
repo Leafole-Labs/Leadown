@@ -17,8 +17,22 @@ pub(crate) fn session_window(window: &Window) -> SessionWindow {
     }
 }
 
-/// Minimize / maximize-restore / close. Shown in both decoration modes: the
-/// app requests no compositor titlebar, so these are the only controls.
+/// Width reserved for the native macOS traffic lights in the header.
+pub(crate) const TRAFFIC_LIGHT_INSET: f32 = 78.;
+
+/// Left padding for header rows: on macOS, reserve space for the traffic
+/// lights when they sit over this area.
+pub(crate) fn chrome_left_pad(native_controls_left: bool) -> f32 {
+    if cfg!(target_os = "macos") && native_controls_left {
+        TRAFFIC_LIGHT_INSET
+    } else {
+        9.
+    }
+}
+
+/// Minimize / maximize-restore / close. Not shown on macOS, where the native
+/// traffic lights already provide them; on other platforms the app requests
+/// no compositor titlebar, so these are the only controls.
 pub(crate) fn window_controls(window: &Window, pal: &Palette) -> impl IntoElement {
     let caps = window.window_controls();
     let maximized = window.is_maximized();
