@@ -375,10 +375,10 @@ mod tests {
 
     #[test]
     fn tf_replaces_placeholders() {
-        set(Lang::En);
-        assert_eq!(tf(Key::Words, &[("n", "5")]), "5 words");
-        set(Lang::PtBr);
+        // No `set` — the global language races with parallel tests; the
+        // default is PtBr, and MOD differs per platform.
         assert_eq!(tf(Key::Words, &[("n", "5")]), "5 palavras");
-        assert!(tf(Key::Sidebar, &[]).contains("Cmd+\\"));
+        assert_eq!(lookup(Lang::En, Key::Words), "{n} words");
+        assert!(tf(Key::Sidebar, &[]).contains(&format!("{}+\\", crate::keymap::MOD)));
     }
 }
