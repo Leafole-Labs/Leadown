@@ -362,6 +362,26 @@ impl LiveEditor {
         let Some(off) = self.offset_at(ev.position) else {
             return;
         };
+        // Plain click on a `[ ]`/`[x]` marker toggles the task.
+        if ev.click_count == 1
+            && !ev.modifiers.shift
+            && !ev.modifiers.alt
+            && let Some(t) = self
+                .analysis
+                .tasks
+                .iter()
+                .find(|t| t.marker.contains(&off))
+        {
+            let cur = self.buf.cursor();
+            self.buf.edit(
+                t.marker.clone(),
+                if t.checked { "[ ]" } else { "[x]" },
+                None,
+            );
+            self.buf.restore_cursor(cur);
+            self.changed(cx);
+            return;
+        }
         self.selecting = true;
         if ev.modifiers.shift {
             self.select_to(off, cx);
@@ -792,6 +812,8 @@ fn run(pal: &Palette, kind: Kind, flags: u16, len: usize) -> TextRun {
         pal.mark
     } else if flags & md::MUTED != 0 {
         pal.muted
+    } else if flags & md::DONE != 0 {
+        pal.muted
     } else if heading || flags & md::LINK != 0 {
         pal.head
     } else if kind == Kind::Quote {
@@ -806,8 +828,8 @@ fn run(pal: &Palette, kind: Kind, flags: u16, len: usize) -> TextRun {
             wavy: false,
         }
     });
-    let strikethrough =
-        (flags & md::STRIKE != 0 && flags & md::MARK == 0).then(|| StrikethroughStyle {
+    let strikethrough = (flags & (md::STRIKE | md::DONE) != 0 && flags & md::MARK == 0)
+        .then(|| StrikethroughStyle {
             thickness: px(1.),
             color: None,
         });

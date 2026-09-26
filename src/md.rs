@@ -14,6 +14,12 @@ pub const CODE: u16 = 16;
 pub const LINK: u16 = 32;
 pub const MARK: u16 = 64;
 pub const MUTED: u16 = 128;
+pub const TASK: u16 = 256;
+pub const DONE: u16 = 512;
+pub const KEYWORD: u16 = 1024;
+pub const STRING: u16 = 2048;
+pub const COMMENT: u16 = 4096;
+pub const NUMBER: u16 = 8192;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
@@ -22,6 +28,12 @@ pub enum Kind {
     Code,
     Quote,
     Rule,
+}
+
+/// A `- [ ]` / `- [x]` list-item marker; clicking toggles the task.
+pub struct Task {
+    pub marker: Range<usize>,
+    pub checked: bool,
 }
 
 /// `owner` reveals `hidden` when the selection touches it (inclusive ends).
@@ -40,6 +52,8 @@ pub struct Analysis {
     pub conceals: Vec<Conceal>,
     /// `[[wiki-links]]` found outside code spans/blocks.
     pub wiki_links: Vec<crate::links::WikiLink>,
+    /// Task-list markers, in buffer order.
+    pub tasks: Vec<Task>,
 }
 
 pub struct Analyzer {
@@ -77,6 +91,7 @@ impl Analyzer {
             lines,
             conceals: Vec::new(),
             wiki_links: Vec::new(),
+            tasks: Vec::new(),
         };
         if len == 0 {
             return out;
@@ -156,7 +171,16 @@ impl Analyzer {
                 | "list_marker_parenthesis"
                 | "task_list_marker_checked"
                 | "task_list_marker_unchecked" => {
-                    out.mark(range, MARK);
+                    let checked = node.kind() == "task_list_marker_checked";
+                    out.mark(range.clone(), MARK | TASK);
+                    out.tasks.push(Task {
+                        marker: range.clone(),
+                        checked,
+                    });
+                    if checked {
+                        let end = out.lines[out.line_of(range.start)].0.end;
+                        out.mark(range.end..end, DONE);
+                    }
                     false
                 }
                 "thematic_break" => {
@@ -488,6 +512,20 @@ mod tests {
         assert_eq!(shown(t, bar), "see [[Foo|bar]] ok");
         // Plain target link shows the target.
         assert_eq!(shown("x [[Foo]] y", 0), "x Foo y");
+    }
+
+    #[test]
+    fn task_items_flag_marker_and_done_text() {
+        let t = "- [ ] todo\n- [x] done";
+        let a = Analyzer::new().analyze(t);
+        assert_eq!(a.tasks.len(), 2);
+        assert!(!a.tasks[0].checked);
+        assert!(a.tasks[1].checked);
+        let at = |s: &str| a.flags[t.find(s).unwrap()];
+        assert!(at("[ ]") & TASK != 0 && at("[ ]") & MARK != 0);
+        assert!(at("[x]") & TASK != 0);
+        assert!(at("done") & DONE != 0);
+        assert!(at("todo") & DONE == 0);
     }
 
     #[test]
