@@ -54,6 +54,7 @@ pub(crate) fn window_controls(window: &Window, pal: &Palette) -> impl IntoElemen
                         "win-min",
                         "icons/minimize.svg",
                         "Minimizar",
+                        WindowControlArea::Min,
                         false,
                         dim,
                         hover,
@@ -68,14 +69,30 @@ pub(crate) fn window_controls(window: &Window, pal: &Palette) -> impl IntoElemen
                     ("icons/maximize.svg", "Maximizar")
                 };
                 r.child(
-                    win_btn("win-max", path, label, false, dim, hover)
-                        .on_click(|_, window, _| window.zoom_window()),
+                    win_btn(
+                        "win-max",
+                        path,
+                        label,
+                        WindowControlArea::Max,
+                        false,
+                        dim,
+                        hover,
+                    )
+                    .on_click(|_, window, _| window.zoom_window()),
                 )
             })
             .child(
-                win_btn("win-close", "icons/close.svg", "Fechar", true, dim, hover)
-                    .on_click(|_, window, _| window.remove_window())
-                    .text_color(rgb(fg)),
+                win_btn(
+                    "win-close",
+                    "icons/close.svg",
+                    "Fechar",
+                    WindowControlArea::Close,
+                    true,
+                    dim,
+                    hover,
+                )
+                .on_click(|_, window, _| window.remove_window())
+                .text_color(rgb(fg)),
             )
     })
 }
@@ -86,12 +103,14 @@ pub(crate) fn win_btn(
     id: &'static str,
     path: &'static str,
     label: &'static str,
+    area: WindowControlArea,
     danger: bool,
     dim: u32,
     hover: u32,
 ) -> Stateful<Div> {
     div()
         .id(id)
+        .window_control_area(area)
         .role(Role::Button)
         .aria_label(label)
         .size(px(28.))
@@ -112,6 +131,9 @@ pub(crate) fn win_btn(
 }
 
 /// Marks `el` as a window-drag region: primary-button drags move the window.
+/// The control area resolves the drag on Windows, where `start_window_move`
+/// is a no-op; the mouse-down handler covers the other platforms.
 pub(crate) fn titlebar_drag(el: Stateful<Div>) -> Stateful<Div> {
-    el.on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
+    el.window_control_area(WindowControlArea::Drag)
+        .on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
 }

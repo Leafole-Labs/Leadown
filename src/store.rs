@@ -8,10 +8,24 @@ use std::path::{Path, PathBuf};
 use crate::i18n::LangPref;
 use crate::theme::ThemePref;
 
+/// XDG-style base dir: `var` wins; on Windows fall back to `%APPDATA%` /
+/// `%LOCALAPPDATA%`, then `HOME`/`USERPROFILE` + `fallback`, else the cwd.
 pub(crate) fn xdg(var: &str, fallback: &str) -> PathBuf {
-    std::env::var_os(var)
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(fallback)))
+    if let Some(p) = std::env::var_os(var) {
+        return PathBuf::from(p);
+    }
+    if cfg!(windows) {
+        let base = match var {
+            "XDG_CONFIG_HOME" | "XDG_DATA_HOME" => "APPDATA",
+            _ => "LOCALAPPDATA",
+        };
+        if let Some(p) = std::env::var_os(base) {
+            return PathBuf::from(p);
+        }
+    }
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(|h| PathBuf::from(h).join(fallback))
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
@@ -360,5 +374,18 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "two");
         assert!(!dir.join("nested").join(".out.txt.abstract-tmp").exists());
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn xdg_explicit_var_wins() {
+        // Unique var name: env mutation in tests is racy, so only the
+        // explicit-var branch is exercised here.
+        const VAR: &str = "ABSTRACT_XDG_TEST_VAR_9F3B";
+        unsafe { std::env::set_var(VAR, "/tmp/abstract-xdg-wins") };
+        assert_eq!(
+            xdg(VAR, "fallback"),
+            PathBuf::from("/tmp/abstract-xdg-wins")
+        );
+        unsafe { std::env::remove_var(VAR) };
     }
 }
