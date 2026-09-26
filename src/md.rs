@@ -144,13 +144,38 @@ impl Analyzer {
                 "fenced_code_block" | "indented_code_block" => {
                     out.set_kind(range.clone(), Kind::Code);
                     let mut cursor = node.walk();
+                    let mut lang = String::new();
+                    let mut content: Option<Range<usize>> = None;
                     for child in node.children(&mut cursor) {
-                        if matches!(child.kind(), "fenced_code_block_delimiter" | "info_string") {
-                            let r = child.start_byte().min(len)..child.end_byte().min(len);
-                            out.mark(r.clone(), MUTED);
-                            // Fence text disappears (the line stays as block
-                            // padding) until the selection enters the block.
-                            out.conceal(range.clone(), r);
+                        let r = child.start_byte().min(len)..child.end_byte().min(len);
+                        match child.kind() {
+                            "info_string" => {
+                                lang = text[r.clone()]
+                                    .split_whitespace()
+                                    .next()
+                                    .unwrap_or_default()
+                                    .to_lowercase();
+                                out.mark(r.clone(), MUTED);
+                                out.conceal(range.clone(), r);
+                            }
+                            "fenced_code_block_delimiter" => {
+                                out.mark(r.clone(), MUTED);
+                                // Fence text disappears (the line stays as block
+                                // padding) until the selection enters the block.
+                                out.conceal(range.clone(), r);
+                            }
+                            "code_fence_content" => {
+                                content = Some(r);
+                            }
+                            _ => {}
+                        }
+                    }
+                    if let Some(c) = content
+                        && node.kind() == "fenced_code_block"
+                        && c.end > c.start
+                    {
+                        for (r, flag) in crate::code::highlight(&lang, &text[c.clone()]) {
+                            out.mark(c.start + r.start..(c.start + r.end).min(len), flag);
                         }
                     }
                     false
