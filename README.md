@@ -34,8 +34,8 @@ Your notes are plain `.md` files living in real folders on disk. No accounts, no
 Prebuilt artifacts are attached to each [GitHub Release](https://github.com/fireflylabss/abstract/releases):
 
 - **Linux** — `abstract-<version>-linux-x86_64.tar.gz` (binary + docs) and a `.deb` package.
-- **macOS** — `abstract-<version>-macos-aarch64.app.zip` / `...-macos-x86_64.app.zip`. The app is ad-hoc signed; on first launch either right-click → **Open**, or run `xattr -dr com.apple.quarantine abstract.app`.
-- **Windows** — `abstract-<version>-windows-x86_64.zip` (icon embedded in the `.exe`).
+- **macOS** — `abstract-<version>-macos-aarch64.dmg` (Apple Silicon) / `...-macos-x86_64.dmg` (Intel): open and drag `abstract.app` to Applications. A bare `.app.zip` is also attached. The app is ad-hoc signed; on first launch either right-click → **Open**, or run `xattr -dr com.apple.quarantine /Applications/abstract.app`.
+- **Windows** — `abstract-<version>-windows-x86_64.exe` (portable, just run it) or the `.zip` with README/LICENSE. SmartScreen may warn about an unknown publisher: **More info → Run anyway**.
 
 ### Arch / CachyOS (AUR)
 

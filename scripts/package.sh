@@ -14,7 +14,8 @@ case "${target}" in
 *-apple-darwin | *-linux-gnu) ;;
 
 *-pc-windows-msvc)
-    # Windows: zip with the .exe (icon is embedded by build.rs) + docs
+    # Windows: standalone .exe (icon is embedded by build.rs) + zip with docs
+    cp "${bin}.exe" "dist/abstract-${version}-${artifact}.exe"
     stage="dist/pkg"
     rm -rf "${stage}"
     mkdir -p "${stage}"
@@ -41,7 +42,7 @@ cp README.md LICENSE "${stage}/"
 tar -C "${stage}" -czf "dist/abstract-${version}-${artifact}.tar.gz" .
 rm -rf "${stage}"
 
-# macOS: bare .app bundle (ad-hoc signed), zipped
+# macOS: bare .app bundle (ad-hoc signed), zipped and as a drag-to-Applications dmg
 if [[ "${target}" == *-apple-darwin ]]; then
     app="dist/abstract.app"
     rm -rf "${app}"
@@ -76,7 +77,15 @@ if [[ "${target}" == *-apple-darwin ]]; then
 EOF
     codesign --force --deep -s - "${app}"
     ditto -c -k --keepParent "${app}" "dist/abstract-${version}-${artifact}.app.zip"
-    rm -rf "${app}"
+
+    dmgroot="dist/dmg"
+    rm -rf "${dmgroot}"
+    mkdir -p "${dmgroot}"
+    cp -R "${app}" "${dmgroot}/"
+    ln -s /Applications "${dmgroot}/Applications"
+    hdiutil create -volname "abstract" -srcfolder "${dmgroot}" -ov -format UDZO \
+        "dist/abstract-${version}-${artifact}.dmg" >/dev/null
+    rm -rf "${dmgroot}" "${app}"
 fi
 
 ls -lh dist/
