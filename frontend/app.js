@@ -184,6 +184,8 @@ function cacheEls() {
     els.noteTree = $('note-tree');
     els.editor = $('editor');
     els.preview = $('markdown-preview');
+    els.emptyState = $('empty-state');
+    els.btnEmptyNew = $('btn-empty-new');
     els.wordCount = $('word-count');
     els.saveStatus = $('save-status');
     els.searchPalette = $('search-palette');
@@ -215,6 +217,7 @@ async function loadNote(path) {
         els.editor.value = content;
         els.editor.classList.remove('visible');
         els.preview.classList.remove('hidden');
+        els.emptyState.classList.add('hidden');
         updatePreview();
         updateWordCount();
         updateTitle();
@@ -245,7 +248,19 @@ function scheduleSave() {
     }, 400);
 }
 
+let previewTimeout;
+function schedulePreview() {
+    clearTimeout(previewTimeout);
+    previewTimeout = setTimeout(() => {
+        updatePreview();
+    }, 300);
+}
+
 function updatePreview() {
+    if (!state.notePath) {
+        els.preview.innerHTML = '';
+        return;
+    }
     const md = state.noteContent;
     invoke('markdown_to_html', { text: md }).then((html) => {
         els.preview.innerHTML = html;
@@ -488,7 +503,7 @@ async function newNote() {
         counter++;
     }
     try {
-        await invoke('create_note', { path, content: '' });
+        await invoke('create_note', { path, content: `# ${name}\n` });
         await refreshTree();
         await loadNote(path);
         startEditing();
@@ -520,6 +535,7 @@ async function fileExists(path) {
 // ── Editing ────────────────────────────────────────────────────────────
 
 function startEditing() {
+    if (!state.notePath) return;
     state.editing = true;
     els.preview.classList.add('hidden');
     els.editor.classList.add('visible');
@@ -734,7 +750,11 @@ function bindEvents() {
         state.noteContent = els.editor.value;
         updateWordCount();
         scheduleSave();
+        schedulePreview();
     });
+
+    // Empty state button
+    els.btnEmptyNew.addEventListener('click', newNote);
 
     els.editor.addEventListener('blur', () => {
         if (state.editing) {
@@ -749,14 +769,31 @@ function bindEvents() {
 
     // Window controls
     if (window.__TAURI__) {
-        $('win-min').addEventListener('click', () => {
-            window.__TAURI__.window.getCurrent().minimize();
+        const win = window.__TAURI__.window.getCurrent();
+        
+        $('win-min').addEventListener('click', () => win.minimize());
+        $('win-max').addEventListener('click', () => win.toggleMaximize());
+        $('win-close').addEventListener('click', () => win.close());
+        
+        // Drag region for moving the window
+        let dragging = false;
+        let dragStart = { x: 0, y: 0 };
+        
+        els.titlebar.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button')) return;
+            dragging = true;
+            dragStart = { x: e.screenX, y: e.screenY };
         });
-        $('win-max').addEventListener('click', () => {
-            window.__TAURI__.window.getCurrent().toggleMaximize();
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const dx = e.screenX - dragStart.x;
+            const dy = e.screenY - dragStart.y;
+            win.setPosition({ x: e.screenX - e.clientX, y: e.screenY - e.clientY });
         });
-        $('win-close').addEventListener('click', () => {
-            window.__TAURI__.window.getCurrent().close();
+        
+        document.addEventListener('mouseup', () => {
+            dragging = false;
         });
     }
 
@@ -810,6 +847,18 @@ async function init() {
     await loadSettings();
     await loadSpaces();
 
+    // Load the first available note or create a new one
+    if (state.tree.length > 0) {
+        const firstNote = findFirstNote(state.tree);
+        if (firstNote) {
+            await loadNote(firstNote);
+        } else {
+            await newNote();
+        }
+    } else {
+        await newNote();
+    }
+
     // Show tour on first run
     if (!state.settings.tourDone) {
         startTour();
@@ -823,4 +872,28 @@ async function init() {
     document.documentElement.lang = lang;
 }
 
-document.addEventListener('DOMContentLoaded', init);
+function findFirstNote(nodes) {
+    for (const node of nodes) {
+        if (node.kind === 'note') return node.path;
+        if (node.kind === 'folder') {
+            const found = findFirstNote(node.children);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+function safeInit() {
+    try {
+        if (!window.__TAURI__) {
+            console.error('TAURI not available');
+            setTimeout(safeInit, 100);
+            return;
+        }
+        init();
+    } catch (e) {
+        console.error('Init error:', e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', safeInit);

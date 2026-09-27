@@ -94,6 +94,11 @@ html, body {
     -webkit-app-region: drag;
     user-select: none;
     flex-shrink: 0;
+    cursor: default;
+}
+
+#titlebar:active {
+    cursor: grabbing;
 }
 
 #titlebar.hidden {
@@ -350,6 +355,52 @@ html, body {
 
 #markdown-preview.hidden {
     display: none;
+}
+
+/* ── Empty state ──────────────────────────────────────────────────────── */
+
+.empty-state {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--faint);
+    pointer-events: none;
+}
+
+.empty-state > * {
+    pointer-events: auto;
+}
+
+.empty-icon {
+    opacity: 0.4;
+}
+
+.empty-text {
+    font-size: 13px;
+    color: var(--dim);
+}
+
+.btn-primary {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    background: var(--fg);
+    color: var(--bg);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+
+.btn-primary:hover {
+    opacity: 0.85;
 }
 
 /* ── Markdown rendering ──────────────────────────────────────────────── */
@@ -695,6 +746,78 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--dim);
+}
+
+/* ── Window resize handles ───────────────────────────────────────────── */
+
+.resize-handle {
+    position: fixed;
+    z-index: 1000;
+    -webkit-app-region: no-drag;
+}
+
+.resize-handle.top {
+    top: 0;
+    left: 4px;
+    right: 4px;
+    height: 4px;
+    cursor: ns-resize;
+}
+
+.resize-handle.bottom {
+    bottom: 0;
+    left: 4px;
+    right: 4px;
+    height: 4px;
+    cursor: ns-resize;
+}
+
+.resize-handle.left {
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 4px;
+    cursor: ew-resize;
+}
+
+.resize-handle.right {
+    right: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 4px;
+    cursor: ew-resize;
+}
+
+.resize-handle.top-left {
+    top: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    cursor: nwse-resize;
+}
+
+.resize-handle.top-right {
+    top: 0;
+    right: 0;
+    width: 8px;
+    height: 8px;
+    cursor: nesw-resize;
+}
+
+.resize-handle.bottom-left {
+    bottom: 0;
+    left: 0;
+    width: 8px;
+    height: 8px;
+    cursor: nesw-resize;
+}
+
+.resize-handle.bottom-right {
+    bottom: 0;
+    right: 0;
+    width: 8px;
+    height: 8px;
+    cursor: nwse-resize;
 }
 
 /* ── Utility ─────────────────────────────────────────────────────────── */
