@@ -1,9 +1,9 @@
-//! Theme preference (Sistema/Claro/Escuro) and the color palette. The palette
-//! is an app-global snapshot: render code copies it out of `cx.global()`.
+//! Theme preference (System/Light/Dark) and the color palette.
+//!
+//! The palette is a simple data snapshot — the frontend reads these values
+//! via Tauri commands and applies them as CSS custom properties.
 
-use gpui_kit::component::{Theme, ThemeMode};
-use gpui_kit::*;
-
+/// Monochrome color palette. Values are 0xRRGGBB.
 #[derive(Clone, Copy)]
 pub struct Palette {
     pub bg: u32,
@@ -33,8 +33,6 @@ pub struct Palette {
     /// rgba, alpha included.
     pub selection: u32,
 }
-
-impl Global for Palette {}
 
 /// Pure monochrome, dark.
 pub const DARK: Palette = Palette {
@@ -94,7 +92,7 @@ pub const LIGHT: Palette = Palette {
     selection: 0x0000001f,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ThemePref {
     System,
     Light,
@@ -118,7 +116,7 @@ impl ThemePref {
         }
     }
 
-    /// Sistema → Claro → Escuro → Sistema.
+    /// System → Light → Dark → System.
     pub fn next(&self) -> Self {
         match self {
             Self::System => Self::Light,
@@ -126,47 +124,19 @@ impl ThemePref {
             Self::Dark => Self::System,
         }
     }
+}
 
-    pub fn icon(&self) -> &'static str {
-        match self {
-            Self::System => "icons/monitor.svg",
-            Self::Light => "icons/sun.svg",
-            Self::Dark => "icons/moon.svg",
+/// Resolve a ThemePref + OS appearance into a concrete Palette.
+pub fn resolve(pref: ThemePref, os_dark: bool) -> Palette {
+    match pref {
+        ThemePref::Light => LIGHT,
+        ThemePref::Dark => DARK,
+        ThemePref::System => {
+            if os_dark {
+                DARK
+            } else {
+                LIGHT
+            }
         }
     }
-}
-
-/// Shorthand for `*cx.global::<Palette>()` — resolves on `Context` too via
-/// deref.
-pub trait PaletteAccess {
-    fn palette(&self) -> Palette;
-}
-
-impl PaletteAccess for App {
-    fn palette(&self) -> Palette {
-        *self.global::<Palette>()
-    }
-}
-
-/// Set the palette global and push the matching mode into the component
-/// library so tooltips/inputs follow.
-pub fn apply(pref: ThemePref, appearance: WindowAppearance, cx: &mut App) {
-    let light = match pref {
-        ThemePref::Light => true,
-        ThemePref::Dark => false,
-        ThemePref::System => matches!(
-            appearance,
-            WindowAppearance::Light | WindowAppearance::VibrantLight
-        ),
-    };
-    cx.set_global(if light { LIGHT } else { DARK });
-    Theme::change(
-        if light {
-            ThemeMode::Light
-        } else {
-            ThemeMode::Dark
-        },
-        None,
-        cx,
-    );
 }

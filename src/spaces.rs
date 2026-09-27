@@ -1,12 +1,12 @@
 //! Spaces: named note folders, like Obsidian vaults. The list lives in
-//! `$XDG_CONFIG_HOME/abstract/spaces` as one absolute path per line; the line
+//! `$XDG_CONFIG_HOME/leadown/spaces` as one absolute path per line; the line
 //! prefixed with `* ` is the active space.
 
 use std::path::{Path, PathBuf};
 
 use crate::store::{write_atomic, xdg};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Spaces {
     pub paths: Vec<PathBuf>,
     pub active: usize,
@@ -83,11 +83,11 @@ pub fn name_of(path: &Path) -> String {
 
 fn config_file() -> PathBuf {
     xdg("XDG_CONFIG_HOME", ".config")
-        .join("abstract")
+        .join("leadown")
         .join("spaces")
 }
 
-/// Blocking. Loads the list, seeding `~/.local/share/abstract/Pessoal` on first
+/// Blocking. Loads the list, seeding `~/.local/share/leadown/Pessoal` on first
 /// run. A CLI path argument is added and activated.
 pub fn load() -> Spaces {
     let mut spaces = std::fs::read_to_string(config_file())
@@ -98,7 +98,7 @@ pub fn load() -> Spaces {
         });
     if spaces.paths.is_empty() {
         let path = xdg("XDG_DATA_HOME", ".local/share")
-            .join("abstract")
+            .join("leadown")
             .join("Pessoal");
         let _ = std::fs::create_dir_all(&path);
         spaces.paths.push(path);
@@ -116,7 +116,7 @@ pub fn save(spaces: &Spaces) {
     let result = write_atomic(&file, spaces.serialize().as_bytes());
     if let Err(err) = result {
         eprintln!(
-            "abstract: failed to save spaces to {}: {err}",
+            "leadown: failed to save spaces to {}: {err}",
             file.display()
         );
     }

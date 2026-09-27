@@ -1,74 +1,32 @@
 [package]
-name = "abstract-editor"
+name = "leadown"
 version = "0.1.1"
 edition = "2024"
-description = "Minimal local-first markdown notes editor, GPU-rendered with GPUI"
-repository = "https://github.com/fireflylabss/abstract"
+description = "Minimal local-first markdown notes editor"
+repository = "https://github.com/fireflylabss/leadown"
 license = "Apache-2.0"
 rust-version = "1.97"
-keywords = ["markdown", "notes", "editor", "gpui"]
+keywords = ["markdown", "notes", "editor", "local-first"]
 categories = ["text-editors"]
 readme = "README.md"
 
 [[bin]]
-name = "abstract"
+name = "leadown"
 path = "src/main.rs"
 
 [dependencies]
-gpui = { version = "=0.3.4", package = "gpui-pre" }
-gpui-base = "=0.6.1"
-gpui-component = "=0.6.1"
-gpui-component-macros = "=0.6.1"
-gpui-kit = { version = "=0.6.1", default-features = false, features = ["component", "tree-sitter-markdown", "tree-sitter-markdown-inline"] }
-gpui-kit-assets = "=0.6.1"
-gpui_platform = { version = "=0.3.4", package = "gpui-pre-platform", default-features = false, features = ["wayland", "x11"] }
-tree-sitter = "=0.26.13"
+tauri = { version = "2" }
 notify = "8"
 sys-locale = "0.3"
 futures = "0.3"
-tree-sitter-md = "=0.5.3"
 trash = "5"
 unicode-segmentation = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+pulldown-cmark = "0.12"
 
 [build-dependencies]
-winresource = "=0.1.31"
-
-[package.metadata.deb]
-depends = "libxkbcommon0, libxkbcommon-x11-0, libwayland-client0, libxcb1, libfontconfig1"
-section = "editors"
-assets = [
-    [
-        "target/release/abstract",
-        "usr/bin/",
-        "755",
-    ],
-    ["README.md", "usr/share/doc/abstract/README.md", "644"],
-    [
-        "assets/abstract.desktop",
-        "usr/share/applications/abstract.desktop",
-        "644",
-    ],
-    [
-        "assets/abstract.png",
-        "usr/share/icons/hicolor/512x512/apps/abstract.png",
-        "644",
-    ],
-]
-
-[package.metadata.generate-rpm]
-assets = [
-    { source = "target/release/abstract", dest = "/usr/bin/abstract", mode = "755" },
-    { source = "README.md", dest = "/usr/share/doc/abstract/README.md", mode = "644" },
-    { source = "assets/abstract.desktop", dest = "/usr/share/applications/abstract.desktop", mode = "644" },
-    { source = "assets/abstract.png", dest = "/usr/share/icons/hicolor/512x512/apps/abstract.png", mode = "644" },
-]
-
-[package.metadata.generate-rpm.requires]
-libxkbcommon = "*"
-libxkbcommon-x11 = "*"
-libwayland-client = "*"
-libxcb = "*"
-fontconfig = "*"
+tauri-build = { version = "2", features = [] }
 
 [profile.release]
 opt-level = 3

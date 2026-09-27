@@ -92,7 +92,7 @@ jobs:
             -k "$KEYCHAIN_PW" build.keychain
           security list-keychains -d user -s build.keychain login.keychain
           rm -f "$p12"
-          xcrun notarytool store-credentials abstract-notary \
+          xcrun notarytool store-credentials leadown-notary \
             --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
             --password "$APPLE_APP_PASSWORD"
           echo "MACOS_SIGN_IDENTITY=$MACOS_SIGNING_IDENTITY" >> "$GITHUB_ENV"

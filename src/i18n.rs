@@ -340,10 +340,17 @@ pub fn t(k: Key) -> &'static str {
 }
 
 /// `t` with `{name}` placeholders replaced from `args`. `{MOD}` expands to
-/// `Cmd` on macOS, `Ctrl` elsewhere — same convention as the keymap.
+/// `Cmd` on macOS, `Ctrl` elsewhere.
 pub fn tf(k: Key, args: &[(&str, &str)]) -> String {
     let mut s = t(k).to_string();
-    s = s.replace("{MOD}", crate::keymap::MOD);
+    s = s.replace(
+        "{MOD}",
+        if cfg!(target_os = "macos") {
+            "Cmd"
+        } else {
+            "Ctrl"
+        },
+    );
     for (name, value) in args {
         s = s.replace(&format!("{{{name}}}"), value);
     }
@@ -379,6 +386,13 @@ mod tests {
         // default is PtBr, and MOD differs per platform.
         assert_eq!(tf(Key::Words, &[("n", "5")]), "5 palavras");
         assert_eq!(lookup(Lang::En, Key::Words), "{n} words");
-        assert!(tf(Key::Sidebar, &[]).contains(&format!("{}+\\", crate::keymap::MOD)));
+        assert!(tf(Key::Sidebar, &[]).contains(&format!(
+            "{}+\\",
+            if cfg!(target_os = "macos") {
+                "Cmd"
+            } else {
+                "Ctrl"
+            }
+        )));
     }
 }

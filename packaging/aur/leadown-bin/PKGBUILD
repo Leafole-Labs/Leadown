@@ -1,0 +1,47 @@
+# Maintainer: fireflylabs
+_pkgname=leadown
+pkgname=leadown-bin
+pkgver=0.1.1
+pkgrel=1
+pkgdesc="Minimal local-first markdown notes editor"
+arch=('x86_64' 'aarch64')
+url="https://github.com/fireflylabss/leadown"
+license=('Apache-2.0' 'OFL-1.1')
+depends=(
+	'libxkbcommon'
+	'libxkbcommon-x11'
+	'libxcb'
+	'xcb-util-wm'
+	'xcb-util-image'
+	'xcb-util-keysyms'
+	'xcb-util-renderutil'
+	'wayland'
+	'fontconfig'
+	'alsa-lib'
+	'gcc-libs'
+	'glibc'
+)
+provides=('leadown')
+conflicts=('leadown')
+source=(
+	"leadown.desktop::https://raw.githubusercontent.com/fireflylabss/leadown/v$pkgver/assets/leadown.desktop"
+	"leadown.png::https://raw.githubusercontent.com/fireflylabss/leadown/v$pkgver/assets/leadown.png"
+	"OFL.txt::https://raw.githubusercontent.com/fireflylabss/leadown/v$pkgver/assets/fonts/OFL.txt"
+)
+source_x86_64=("$_pkgname-$pkgver-linux-x86_64.tar.gz::https://github.com/fireflylabss/leadown/releases/download/v$pkgver/leadown-$pkgver-linux-x86_64.tar.gz")
+source_aarch64=("$_pkgname-$pkgver-linux-aarch64.tar.gz::https://github.com/fireflylabss/leadown/releases/download/v$pkgver/leadown-$pkgver-linux-aarch64.tar.gz")
+sha256sums=('SKIP'
+	'SKIP'
+	'SKIP')
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+package() {
+	# The release tarball unpacks leadown/, README.md and LICENSE at $srcdir root.
+	install -Dm755 "$_pkgname" "$pkgdir/usr/bin/leadown"
+	install -Dm644 leadown.desktop "$pkgdir/usr/share/applications/leadown.desktop"
+	install -Dm644 leadown.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/leadown.png"
+	install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+	install -Dm644 OFL.txt "$pkgdir/usr/share/licenses/$pkgname/OFL.txt"
+	install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

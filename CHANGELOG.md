@@ -1,49 +1,48 @@
 # Changelog
 
-All notable changes to abstract are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
-[Semantic Versioning](https://semver.org/).
+All notable changes to Leadown are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
+adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+Leadown is a fork of [abstract](https://github.com/fireflylabss/abstract). See
+the original project's history for earlier changes.
 
-## [0.1.1] - 2026-09-26
-
-### Added
-- Linux aarch64 builds (`tar.gz`, `.deb`, `.AppImage`, `.rpm`).
-- `.AppImage` and `.rpm` packages for Linux x86_64.
-- macOS builds are signed with a Developer ID and notarized when the signing
-  secrets are configured in the release workflow; unsigned (ad-hoc) builds are
-  still produced otherwise.
-- `.SRCINFO` committed next to each AUR `PKGBUILD`.
-- This changelog.
+## [0.1.1] - 2026-09-22
 
 ### Changed
-- AUR `abstract-editor` / `abstract-editor-bin` bumped to `pkgrel=2` for the
-  re-tagged v0.1.0.
 
-## [0.1.0] - 2026-09-26
-
-First public release.
+- Rebranded from `abstract` to `Leadown` across all user-facing surfaces:
+  application name, window title, UI texts, README, documentation, package
+  metadata, binary names, and release artifacts.
+- Replaced the GPUI-based UI layer with a web-based frontend (HTML/CSS/JS)
+  running on Tauri 2.
+- Markdown is now converted to sanitized HTML as an intermediate rendering
+  representation. Notes remain plain `.md` files on disk.
 
 ### Added
-- Local-first markdown notes editor rendered on the GPU with GPUI, with a
-  sidebar of spaces and notes, a first-run tour and light/dark themes.
-- Markdown analysis: headings, emphasis, fenced code blocks with syntax
-  highlighting, painted bullets and clickable task checkboxes.
-- `[[wiki-links]]` with autocomplete, Ctrl/Cmd+click to open or create the
-  target note, and a backlinks panel under the editor.
-- Global note search palette (Ctrl/Cmd+P).
-- Live reload when the space folder changes on disk.
-- i18n (English, pt-BR) with locale detection and an in-app switch.
-- Bundled Noto Sans / Noto Sans Mono fonts.
-- macOS: native traffic lights, app icon, macOS keybindings and graceful quit.
-- Windows: native window control areas, icon embedded in the `.exe`.
-- Linux: Wayland and X11 support; `.desktop` entry and icon.
-- Release artifacts: macOS `.dmg` / `.app.zip` (Apple Silicon and Intel),
-  Linux x86_64 `tar.gz` and `.deb`, Windows x86_64 `.exe` and `.zip`,
-  `SHA256SUMS`.
-- AUR packages `abstract-editor` (source) and `abstract-editor-bin`.
 
-[Unreleased]: https://github.com/fireflylabss/abstract/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/fireflylabss/abstract/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/fireflylabss/abstract/releases/tag/v0.1.0
+- `render` module: Markdown → HTML conversion with XSS-safe sanitization.
+- Web frontend: sidebar tree, editor with live preview, search palette,
+  theme cycling, first-run tour, i18n (English and Portuguese).
+- Tauri 2 backend: filesystem operations, settings, session persistence,
+  spaces management.
+
+## [0.1.0] - 2026-09-20
+
+### Added
+
+- Initial fork from `abstract` with GPUI-based rendering.
+- Live markdown editing with tree-sitter inline parsing.
+- Autosave with atomic writes.
+- Spaces (multiple note directories).
+- Sidebar tree with inline rename.
+- Task lists with clickable checkboxes.
+- Syntax-highlighted code blocks.
+- Wiki-links with autocomplete and backlinks panel.
+- Global search.
+- External-edit aware (filesystem watcher).
+- Session restore.
+- Monochrome light/dark themes.
+- English and Portuguese (Brazilian) interface.
+- First-run tour.
+- Chromeless custom titlebar.

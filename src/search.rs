@@ -7,6 +7,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct Hit {
     pub path: PathBuf,
     pub title: String,
@@ -192,10 +193,8 @@ mod tests {
     use super::*;
 
     fn space(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "abstract-search-test-{name}-{}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("leadown-search-test-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir

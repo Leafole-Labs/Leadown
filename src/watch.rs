@@ -17,7 +17,7 @@ pub(crate) fn watch(dir: &Path) -> notify::Result<(SpaceWatcher, UnboundedReceiv
     let mut inner = RecommendedWatcher::new(
         move |event: notify::Result<notify::Event>| {
             let Ok(event) = event else { return };
-            // Dotfiles only (incl. `.{name}.abstract-tmp` from write_atomic):
+            // Dotfiles only (incl. `.{name}.leadown-tmp` from write_atomic):
             // nothing the UI shows.
             if event.paths.iter().all(|p| {
                 p.file_name()
@@ -39,7 +39,7 @@ mod tests {
 
     #[test]
     fn file_create_signals_watch() {
-        let dir = std::env::temp_dir().join(format!("abstract-watch-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("leadown-watch-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let (_w, mut rx) = watch(&dir).unwrap();
         std::fs::write(dir.join("a.md"), "# hi").unwrap();

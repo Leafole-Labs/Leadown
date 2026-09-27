@@ -9,13 +9,13 @@ use std::time::SystemTime;
 
 const MAX_DEPTH: usize = 16;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum NodeKind {
     Folder,
     Note,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Node {
     /// Absolute path.
     pub path: PathBuf,
@@ -222,7 +222,7 @@ mod tests {
     impl Tree {
         fn new() -> Self {
             let dir = std::env::temp_dir().join(format!(
-                "abstract-vault-test-{}-{}",
+                "leadown-vault-test-{}-{}",
                 std::process::id(),
                 SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)

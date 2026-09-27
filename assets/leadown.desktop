@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=abstract
+Name=Leadown
 Comment=Minimal local-first markdown notes editor
-Exec=abstract
+Exec=leadown
 Terminal=false
-Icon=abstract
+Icon=leadown
 Categories=Office;TextEditor;

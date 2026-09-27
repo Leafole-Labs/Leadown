@@ -1,5 +1,5 @@
-//! Local persistence: settings live in `$XDG_CONFIG_HOME/abstract/settings`
-//! and the session in `$XDG_STATE_HOME/abstract/session`, both as `key =
+//! Local persistence: settings live in `$XDG_CONFIG_HOME/leadown/settings`
+//! and the session in `$XDG_STATE_HOME/leadown/session`, both as `key =
 //! value` lines. Everything on disk goes through `write_atomic`.
 
 use std::io::{self, Write};
@@ -31,13 +31,13 @@ pub(crate) fn xdg(var: &str, fallback: &str) -> PathBuf {
 
 fn settings_file() -> PathBuf {
     xdg("XDG_CONFIG_HOME", ".config")
-        .join("abstract")
+        .join("leadown")
         .join("settings")
 }
 
 fn session_file() -> PathBuf {
     xdg("XDG_STATE_HOME", ".local/state")
-        .join("abstract")
+        .join("leadown")
         .join("session")
 }
 
@@ -50,7 +50,7 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
         std::fs::create_dir_all(dir)?;
     }
     let name = path.file_name().unwrap_or_default().to_string_lossy();
-    let tmp = path.with_file_name(format!(".{name}.abstract-tmp"));
+    let tmp = path.with_file_name(format!(".{name}.leadown-tmp"));
     let mut file = std::fs::File::create(&tmp)?;
     file.write_all(bytes)?;
     file.sync_all()?;
@@ -59,7 +59,7 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
 
 /// Ordered `key = value` lines. Unrecognized lines are kept verbatim so a
 /// rewrite never drops keys a newer version wrote.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct KeyVals {
     pub lines: Vec<String>,
 }
@@ -107,7 +107,7 @@ impl KeyVals {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Settings {
     pub kv: KeyVals,
 }
@@ -155,7 +155,7 @@ impl Settings {
         let file = settings_file();
         if let Err(err) = write_atomic(&file, self.kv.serialize().as_bytes()) {
             eprintln!(
-                "abstract: failed to save settings to {}: {err}",
+                "leadown: failed to save settings to {}: {err}",
                 file.display()
             );
         }
@@ -271,7 +271,7 @@ impl Session {
         let file = session_file();
         if let Err(err) = write_atomic(&file, self.kv.serialize().as_bytes()) {
             eprintln!(
-                "abstract: failed to save session to {}: {err}",
+                "leadown: failed to save session to {}: {err}",
                 file.display()
             );
         }
@@ -366,13 +366,13 @@ mod tests {
 
     #[test]
     fn write_atomic_writes_and_overwrites() {
-        let dir = std::env::temp_dir().join(format!("abstract-store-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("leadown-store-test-{}", std::process::id()));
         let file = dir.join("nested").join("out.txt");
         write_atomic(&file, b"one").unwrap();
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "one");
         write_atomic(&file, b"two").unwrap();
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "two");
-        assert!(!dir.join("nested").join(".out.txt.abstract-tmp").exists());
+        assert!(!dir.join("nested").join(".out.txt.leadown-tmp").exists());
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -380,12 +380,9 @@ mod tests {
     fn xdg_explicit_var_wins() {
         // Unique var name: env mutation in tests is racy, so only the
         // explicit-var branch is exercised here.
-        const VAR: &str = "ABSTRACT_XDG_TEST_VAR_9F3B";
-        unsafe { std::env::set_var(VAR, "/tmp/abstract-xdg-wins") };
-        assert_eq!(
-            xdg(VAR, "fallback"),
-            PathBuf::from("/tmp/abstract-xdg-wins")
-        );
+        const VAR: &str = "LEADOWN_XDG_TEST_VAR_9F3B";
+        unsafe { std::env::set_var(VAR, "/tmp/leadown-xdg-wins") };
+        assert_eq!(xdg(VAR, "fallback"), PathBuf::from("/tmp/leadown-xdg-wins"));
         unsafe { std::env::remove_var(VAR) };
     }
 }
