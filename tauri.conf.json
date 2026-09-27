@@ -4,10 +4,10 @@
   "version": "0.1.1",
   "identifier": "com.fireflylabss.leadown",
   "build": {
-    "frontendDist": "frontend",
+    "frontendDist": "dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "echo 'ready'",
-    "beforeBuildCommand": "echo 'ready'"
+    "beforeDevCommand": "npm install && npm run dev",
+    "beforeBuildCommand": "npm install && npm run build"
   },
   "app": {
     "windows": [
