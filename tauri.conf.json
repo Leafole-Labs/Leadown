@@ -4,17 +4,14 @@
   "version": "0.1.1",
   "identifier": "com.fireflylabss.leadown",
   "build": {
-    "frontendDist": "dist",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm install && npm run dev",
-    "beforeBuildCommand": "npm install && npm run build"
+    "frontendDist": "frontend"
   },
   "app": {
     "windows": [
       {
         "title": "Leadown",
-        "width": 1200,
-        "height": 800,
+        "width": 900,
+        "height": 600,
         "minWidth": 560,
         "minHeight": 360,
         "resizable": true,
